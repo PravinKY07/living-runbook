@@ -127,21 +127,25 @@ The project should eventually be committed to a GitHub repository so an online I
 
 ## IBM Bob access situation
 
-The user could not find the IBM Bob chat/interface in their editor. The event is listed as an online hackathon. The likely access path is:
+The official IBM Bob 2.0 Hackathon Guide says IBM Bob IDE is required for the submission. Do not rely on a browser-only editor or assume the local path is visible to a web tool.
 
-1. Register on the Lablab event site.
-2. Open the live event page.
-3. Join/start hacking/launch Bob.
-4. Connect or import the GitHub repository.
-5. Send Bob a prompt to read `AGENTS.md` and `README.md`.
+The correct setup is:
 
-Local path:
+1. Install the latest Bob IDE v2.0.x; the guide says v1.0.3 and v2.0.0 stop working on September 30, 2026, and v2.0.0 must be upgraded to v2.0.2 or later.
+2. Use the registration email to sign in with the hackathon-provisioned Bob account, not a personal Bob account.
+3. Create an IBMid if needed and complete authentication through the browser.
+4. In Bob IDE Settings, select the hackathon instance named `ibm-coding-challenge-uat (region: us-east)`.
+5. Open the local project folder in Bob IDE:
 
 ```text
 C:\Users\user\OneDrive\Desktop\living-runbook
 ```
 
-A browser-based Bob may not see this local path unless the event environment supports local workspace access. GitHub is the safer connection method.
+6. Ask Bob in the IDE chat interface to read `AGENTS.md` and `README.md`.
+
+The guide also requires submission evidence: create a `bob_sessions/` directory in the final repository and upload PNG screenshots of the Bob task session consumption summaries for all relevant tasks. Capture screenshots during the build, not only at the end. The GitHub repository is still useful for backup, but the required Bob evidence must come from the Bob IDE Tasks view.
+
+The guide states that 40 Bobcoins are provisioned for the hackathon account. Monitor usage under Bob IDE Settings and avoid using a personal account by mistake.
 
 ## Next steps after returning
 
