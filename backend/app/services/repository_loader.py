@@ -5,8 +5,10 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import stat
 import subprocess
 import tempfile
+import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -186,9 +188,17 @@ class RepositoryLoader:
 
     @staticmethod
     def _cleanup(workspace: Path) -> None:
-        try:
-            shutil.rmtree(workspace)
-        except OSError as exc:
-            raise RepositoryCleanupError(
-                "Temporary repository workspace could not be removed."
-            ) from exc
+        def clear_readonly(function, path, _exc_info) -> None:
+            os.chmod(path, stat.S_IWRITE)
+            function(path)
+
+        for attempt in range(3):
+            try:
+                shutil.rmtree(workspace, onerror=clear_readonly)
+                return
+            except OSError:
+                if attempt == 2:
+                    raise RepositoryCleanupError(
+                        "Temporary repository workspace could not be removed."
+                    )
+                time.sleep(0.1)

@@ -1,3 +1,4 @@
+import stat
 import subprocess
 from pathlib import Path
 
@@ -28,6 +29,7 @@ class FakeGitRunner:
                     encoding="utf-8",
                 )
                 (destination / ".env").write_text("PASSWORD=do-not-include\n", encoding="utf-8")
+                (destination / "app.py").chmod(stat.S_IREAD)
             return subprocess.CompletedProcess(command, self.clone_returncode, "", "")
         if "rev-parse" in command:
             return subprocess.CompletedProcess(command, 0, "a" * 40, "")
