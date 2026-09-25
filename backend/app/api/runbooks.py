@@ -108,6 +108,9 @@ def ask_runbook(
             citations=[],
         )
     draft = _get_runbook(request, runbook_id).draft
+    status_answer = _status_answer(payload.question, draft.metadata.status)
+    if status_answer is not None:
+        return status_answer
     question_terms = _question_terms(payload.question)
     lines = draft.content.splitlines()
     focus_terms = _focus_terms(question_terms)
@@ -191,6 +194,17 @@ def _question_terms(question: str) -> set[str]:
     }
 
 
+def _status_answer(question: str, status: str) -> AnswerResponse | None:
+    """Answer approval-status questions from trusted runbook metadata."""
+    normalized = question.lower()
+    if not any(term in normalized for term in ("approved", "published", "status")):
+        return None
+    return AnswerResponse(
+        answer=f"The current runbook status is {status}.",
+        citations=[],
+    )
+
+
 def _focus_terms(question_terms: set[str]) -> set[str]:
     """Return a narrow evidence filter for configuration and dependency questions."""
     if "framework" in question_terms:
@@ -219,8 +233,11 @@ def _matching_section_lines(lines: list[str], question_terms: set[str]) -> list[
         "dependency": ("dependency", "dependencies"),
         "dependencies": ("dependency", "dependencies"),
         "configuration": ("configuration", "config"),
+        "defined": ("entry point", "entrypoints", "external call"),
         "endpoint": ("entry point", "entrypoints", "external call"),
         "entry": ("entry point", "entrypoints", "external call"),
+        "handled": ("entry point", "entrypoints", "external call"),
+        "implements": ("entry point", "entrypoints", "external call"),
         "framework": ("service overview", "overview"),
         "health": ("entry point", "entrypoints", "external call"),
         "provenance": ("provenance",),

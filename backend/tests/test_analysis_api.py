@@ -185,6 +185,10 @@ def test_qa_topics_are_focused_and_safe(tmp_path):
     assert "Route handler" in entry_answer
     assert "Failure modes" not in entry_answer
 
+    orders_answer = ask("Where are the orders handled?")
+    assert "orders" in orders_answer
+    assert "def orders" not in orders_answer
+
     framework_answer = ask("What framework does the service use?")
     assert "Framework: fastapi" in framework_answer
     assert "Review database" not in framework_answer
@@ -196,6 +200,9 @@ def test_qa_topics_are_focused_and_safe(tmp_path):
     commit_answer = ask("What commit was analyzed?")
     assert "Commit:" in commit_answer
     assert "Files analyzed" not in commit_answer
+
+    status_answer = ask("Is this runbook approved?")
+    assert status_answer == "The current runbook status is draft."
 
     dependency_answer = ask("What dependencies are used?")
     assert "fastapi" in dependency_answer
