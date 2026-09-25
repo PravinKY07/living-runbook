@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     app_name: str = "living-runbook"
     version: str = "0.1.0"
+    app_env: Literal["development", "test", "production"] = "development"
     debug: bool = False
     database_path: str = "./data/living_runbook.db"
     session_secret: str = Field(default="", repr=False)

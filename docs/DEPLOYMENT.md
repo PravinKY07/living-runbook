@@ -14,7 +14,7 @@ Recommended settings:
 Repository: PravinKY07/living-runbook
 Root directory: backend
 Build command: pip install .
-Start command: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+Start command: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
 Health check: /api/health
 ```
 
@@ -27,6 +27,7 @@ The backend must have a persistent disk. Mount it at:
 Set the backend environment variables in the hosting dashboard:
 
 ```text
+APP_ENV=production
 DATABASE_PATH=/var/data/living_runbook.db
 SESSION_SECRET=<long random private value>
 SESSION_HTTPS_ONLY=true
@@ -34,7 +35,7 @@ SESSION_SAME_SITE=none
 CORS_ORIGINS=["https://your-frontend.vercel.app"]
 ```
 
-Use `SESSION_SAME_SITE=lax` for local same-origin development. Use `none` only when the deployed frontend and backend are on different HTTPS origins, and keep `SESSION_HTTPS_ONLY=true`.
+Before deploying the backend, create the Vercel project without deploying it so you know its exact `*.vercel.app` URL. Put that URL in `CORS_ORIGINS`. Deploy the frontend only after the backend health check passes.
 
 Do not put these values in Git or in frontend environment variables.
 

@@ -28,6 +28,8 @@ def create_app(
     configured persistent path and a single in-process analysis worker.
     """
     app_settings = settings or get_settings()
+    if app_settings.app_env == "production" and not app_settings.session_configured:
+        raise RuntimeError("SESSION_SECRET must be configured in production.")
     app = FastAPI(
         title=app_settings.app_name,
         version=app_settings.version,
