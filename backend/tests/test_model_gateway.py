@@ -1,6 +1,5 @@
 import pytest
 
-from app.config import Settings
 from app.services.model_gateway import (
     GatewayRequest,
     MockProvider,
@@ -8,7 +7,6 @@ from app.services.model_gateway import (
     ProviderName,
     ProviderUnavailable,
     StaticProvider,
-    WatsonxProvider,
 )
 
 
@@ -49,36 +47,6 @@ def test_gateway_enforces_token_limit():
             sanitized_content="sanitized repository content",
             max_output_tokens=5000,
         )
-
-
-def test_watsonx_preflight_reports_missing_settings_without_values():
-    provider = WatsonxProvider(Settings(_env_file=None))
-
-    result = provider.preflight()
-
-    assert result.provider == ProviderName.WATSONX
-    assert result.ready is False
-    assert "WATSONX_APIKEY" in result.missing_settings
-    assert "WATSONX_PROJECT_ID" in result.missing_settings
-    assert "WRITER_MODEL" in result.missing_settings
-    assert "WATSONX_APIKEY" not in result.message
-
-
-def test_watsonx_preflight_does_not_enable_network_inference():
-    settings = Settings(
-        watsonx_apikey="test-key-not-real",
-        watsonx_project_id="test-project",
-        watsonx_url="https://example.invalid",
-        code_analysis_model="test-model",
-        writer_model="test-writer-model",
-    )
-    provider = WatsonxProvider(settings)
-
-    result = provider.preflight()
-
-    assert result.ready is True
-    with pytest.raises(ProviderUnavailable):
-        provider.generate(make_request())
 
 
 def test_gateway_can_register_a_provider():

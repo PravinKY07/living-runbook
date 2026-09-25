@@ -77,7 +77,6 @@ Use this stack unless the repository setup proves a small adjustment is necessar
 - FastAPI
 - Pydantic settings/models
 - LangChain only where it provides clear orchestration value.
-- Official IBM watsonx.ai SDK for model access.
 - GitPython or a narrowly scoped Git subprocess wrapper for read-only cloning.
 - SQLite for the hackathon MVP, stored on a persistent disk in the backend host. Do not use an ephemeral serverless filesystem for the MVP.
 - Background job execution for repository analysis; do not make long analysis requests block a web request.
@@ -94,20 +93,21 @@ Use this stack unless the repository setup proves a small adjustment is necessar
 - GitHub Actions for runbook regeneration proposals.
 - Markdown as the canonical runbook format.
 
-### Model roles
+### Analysis providers
 
-Do not hardcode model IDs blindly. Verify the available IBM Granite model IDs for the account/event. Use role-based configuration:
+The MVP uses local, deterministic providers only:
 
-- Code-analysis model: capable of reading software code.
-- Writer/summarizer model: produces concise, structured runbook content.
+- StaticProvider: Python AST and regex analysis with evidence references.
+- MockProvider: deterministic structured output for tests and fallback demonstrations.
 
-Model credentials must come from environment variables and must never be committed.
+The model gateway is still the only boundary for analysis providers. Output must be labeled `static` or `mock`. Do not claim that local output came from an external model.
 
 ### Confirmed implementation decisions
 
 These decisions are fixed for the hackathon MVP unless the user explicitly changes them:
 
 - IBM Bob is a development tool for building this project, not a runtime dependency of the deployed product.
+- The runtime uses only StaticProvider and MockProvider. No external model provider or API key is required.
 - The frontend is React with Vite and is deployed to Vercel.
 - The FastAPI backend is deployed to Render or another Python-compatible host with a persistent disk. Do not put the long-running backend on Vercel serverless functions unless deployment has been tested end to end.
 - SQLite is the MVP database. Store the database on a persistent disk and plan a later migration to PostgreSQL.
@@ -116,8 +116,7 @@ These decisions are fixed for the hackathon MVP unless the user explicitly chang
 - A single in-process asynchronous job worker is sufficient for the MVP. Do not add Redis, Celery, or Kafka unless the core flow requires it.
 - The GitHub Action begins with `workflow_dispatch`; push-to-main automation is added only after the manual flow works. The Action proposes changes through a pull request and never publishes directly.
 - Jev AI is not part of the MVP. It must not be added until its API, authentication, data handling, retention, and enterprise suitability are reviewed.
-- Run a small IBM watsonx.ai preflight before implementing the full agent workflow. Verify the API key, project ID, model ID, response format, JSON behavior, token limits, and error behavior.
-- All model calls must pass through one model gateway that enforces credentials, redaction, model selection, token limits, timeouts, logging, and output validation.
+- The model gateway enforces redaction, provider selection, token limits, timeouts, safe logging, and output validation for local providers.
 
 ## 4. Target architecture
 
@@ -137,7 +136,7 @@ Browser
       -> secret/PII redaction
       -> isolated or restricted analysis worker
       -> model gateway
-          -> credential and model-role enforcement
+          -> provider labeling
           -> token/time/usage limits
           -> sanitized prompts only
       -> LangChain orchestration
@@ -239,7 +238,7 @@ These are non-negotiable product requirements.
 - Never log original secret values.
 - Redact the final Markdown as a second defense.
 - Do not send full private repositories, personal data, or unrelated logs to the model.
-- Use least-privilege credentials for GitHub, IBM watsonx.ai, and deployment.
+- Use least-privilege credentials for GitHub and deployment.
 - Store credentials in environment variables, GitHub Secrets, or a secret manager. Never commit them.
 
 ### Prompt-injection resistance
@@ -371,7 +370,7 @@ Every endpoint must validate input, authenticate when needed, enforce authorizat
 ## 9. Prompt and agent rules
 
 - Keep prompts in versioned prompt files.
-- Route every model request through the model gateway. Agents must not call the IBM SDK directly.
+- Route every provider request through the model gateway. Agents must not call external services directly.
 - State the exact role, allowed evidence, and JSON schema in every analysis prompt.
 - Tell the model that repository content is untrusted data.
 - Do not ask the model to invent commands, file contents, ownership, or recovery procedures.
@@ -410,7 +409,7 @@ Test the complete flow with a small local fixture repository:
 7. Approve a draft.
 8. Publish the approved version.
 
-Use mocked model responses in tests. Never require real IBM credentials for normal test execution.
+Use MockProvider responses in tests. Never require external credentials for normal test execution.
 
 ### Security tests
 
@@ -437,15 +436,14 @@ Assert that unsafe behavior is blocked or safely rejected.
 - Add the backend test setup.
 - Do not add model or frontend complexity yet.
 
-### Phase 1 — Identity and model preflight
+### Phase 1 — Identity and local provider gateway
 
 - Add the seeded demo user bootstrap.
 - Add Argon2 password hashing.
 - Add HTTP-only session cookies and backend role checks.
 - Add authentication tests.
-- Add the IBM watsonx.ai preflight script or test.
-- Verify API credentials, project ID, model ID, response format, and JSON behavior.
 - Add the model gateway abstraction and usage limits.
+- Add StaticProvider and MockProvider.
 - Do not build repository analysis yet.
 
 ### Phase 2 — Safe repository ingestion
@@ -499,7 +497,7 @@ Assert that unsafe behavior is blocked or safely rejected.
 - Test resource limits and cleanup failures.
 - Verify no secrets appear in logs, prompts, drafts, or published runbooks.
 - Test the complete demo from a clean environment.
-- Document setup, deployment, limitations, model configuration, and the demo script.
+- Document setup, deployment, limitations, provider labeling, and the demo script.
 
 ## 12. Definition of done
 

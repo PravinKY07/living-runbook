@@ -40,11 +40,11 @@ The planned MVP includes:
 - **Database:** SQLite for the MVP
 - **Backend hosting:** Render or another Python-compatible host with persistent storage
 - **Frontend hosting:** Vercel
-- **Model access:** IBM watsonx.ai and Granite when available, accessed through a model gateway
-- **Fallbacks:** StaticProvider for AST/regex analysis and MockProvider for tests and fallback demos
+- **Analysis providers:** StaticProvider for AST/regex analysis and MockProvider for tests and fallback demos, both behind one model gateway
+- **External model provider:** None required for the MVP
 - **Development environment:** IBM Bob IDE
 
-All model providers use the same gateway. Output must be labeled as `watsonx`, `static`, or `mock`; fallback output must never be presented as Granite output.
+All analysis providers use the same gateway. Output must be labeled as `static` or `mock`. The application does not claim that local output came from an external model.
 
 ## Security model
 
@@ -55,7 +55,7 @@ All model providers use the same gateway. Output must be labeled as `watsonx`, `
 - Use temporary workspaces and delete them after success or failure.
 - Allowlist files and enforce repository, file, path, and time limits.
 - Ignore or reject secrets, credentials, private keys, databases, archives, and binaries.
-- Redact secrets and PII before model calls and scan the final Markdown again.
+- Redact secrets and PII before provider calls and scan the final Markdown again.
 - Validate structured model output with schemas.
 - Verify that cited files exist and line numbers are valid.
 - Never execute generated commands.

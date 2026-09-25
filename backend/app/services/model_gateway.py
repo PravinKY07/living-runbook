@@ -1,15 +1,14 @@
 """Provider-neutral model gateway.
 
-All model providers must be called through this module. The gateway keeps
-provider selection, safe limits, and output labeling in one place.
+The MVP uses only local static analysis and deterministic mock output. Keeping
+provider selection behind one gateway makes the analysis components independent
+of how results are produced.
 """
 
 from enum import Enum
 from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
-
-from app.config import Settings
 
 MAX_OUTPUT_TOKENS = 4000
 MAX_TIMEOUT_SECONDS = 60.0
@@ -20,11 +19,10 @@ class ProviderName(str, Enum):
 
     STATIC = "static"
     MOCK = "mock"
-    WATSONX = "watsonx"
 
 
 class GatewayRequest(BaseModel):
-    """Bounded input sent to a model provider."""
+    """Bounded input sent to a provider."""
 
     task: str = Field(min_length=1, max_length=100)
     sanitized_content: str = Field(max_length=100_000)
@@ -41,15 +39,6 @@ class ProviderResponse(BaseModel):
     output: dict[str, Any]
 
 
-class PreflightResult(BaseModel):
-    """Safe preflight result that never contains credentials."""
-
-    provider: ProviderName
-    ready: bool
-    missing_settings: list[str]
-    message: str
-
-
 class ProviderUnavailable(RuntimeError):
     """Raised when a provider cannot be used safely."""
 
@@ -64,7 +53,7 @@ class ModelProvider(Protocol):
 
 
 class StaticProvider:
-    """Deterministic local provider used when external models are unavailable."""
+    """Deterministic local provider used for repository analysis."""
 
     name = ProviderName.STATIC
 
@@ -104,53 +93,8 @@ class MockProvider:
         )
 
 
-class WatsonxProvider:
-    """Configuration-aware watsonx.ai provider stub.
-
-    Network inference is intentionally not implemented in this checkpoint.
-    The preflight only reports whether configuration is present; it never logs
-    or returns credential values.
-    """
-
-    name = ProviderName.WATSONX
-
-    def __init__(self, settings: Settings) -> None:
-        self._settings = settings
-
-    def preflight(self) -> PreflightResult:
-        required = {
-            "WATSONX_APIKEY": self._settings.watsonx_apikey,
-            "WATSONX_PROJECT_ID": self._settings.watsonx_project_id,
-            "WATSONX_URL": self._settings.watsonx_url,
-            "CODE_ANALYSIS_MODEL": self._settings.code_analysis_model,
-            "WRITER_MODEL": self._settings.writer_model,
-        }
-        missing = [name for name, value in required.items() if not value.strip()]
-        if missing:
-            return PreflightResult(
-                provider=self.name,
-                ready=False,
-                missing_settings=missing,
-                message="Watsonx configuration is incomplete.",
-            )
-        return PreflightResult(
-            provider=self.name,
-            ready=True,
-            missing_settings=[],
-            message="Watsonx configuration fields are present; network preflight is not implemented yet.",
-        )
-
-    def generate(self, request: GatewayRequest) -> ProviderResponse:
-        result = self.preflight()
-        if not result.ready:
-            raise ProviderUnavailable(result.message)
-        raise ProviderUnavailable(
-            "Watsonx network inference is not enabled in this checkpoint."
-        )
-
-
 class ModelGateway:
-    """Single entry point for model providers."""
+    """Single entry point for the MVP's static and mock providers."""
 
     def __init__(self, providers: dict[ProviderName, ModelProvider] | None = None) -> None:
         default_providers: dict[ProviderName, ModelProvider] = {
