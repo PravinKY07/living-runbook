@@ -89,6 +89,7 @@ jobs:
 
       - name: Create proposed runbook pull request
         env:
+          GH_TOKEN: ${{ github.token }}
           TARGET_REPOSITORY: ${{ inputs.repository_url || format('https://github.com/{0}', github.repository) }}
         run: |
           set -eu
