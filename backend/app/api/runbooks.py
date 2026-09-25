@@ -63,11 +63,19 @@ def approve_runbook(
 ) -> RunbookDraft:
     """Approve a draft runbook as an Approver."""
     try:
-        return _store(request).approve(
+        approved = _store(request).approve(
             runbook_id,
             approver_id=user.id,
             role=user.role,
         ).draft
+        _record_audit(
+            request,
+            event_type="runbook_approved",
+            outcome="success",
+            actor_id=user.id,
+            resource_id=runbook_id,
+        )
+        return approved
     except RunbookNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except RunbookApprovalError as exc:
@@ -82,7 +90,15 @@ def publish_runbook(
 ) -> RunbookDraft:
     """Publish an approved runbook as an Approver."""
     try:
-        return _store(request).publish(runbook_id, role=user.role).draft
+        published = _store(request).publish(runbook_id, role=user.role).draft
+        _record_audit(
+            request,
+            event_type="runbook_published",
+            outcome="success",
+            actor_id=user.id,
+            resource_id=runbook_id,
+        )
+        return published
     except RunbookNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except RunbookApprovalError as exc:
@@ -330,6 +346,24 @@ def _clean_runbook_line(line: str) -> str | None:
 
 def _store(request: Request) -> SQLiteRunbookStore:
     return request.app.state.runbook_store
+
+
+def _record_audit(
+    request: Request,
+    *,
+    event_type: str,
+    outcome: str,
+    actor_id: int | None = None,
+    resource_id: str | None = None,
+) -> None:
+    audit_store = getattr(request.app.state, "audit_store", None)
+    if audit_store is not None:
+        audit_store.record(
+            event_type=event_type,
+            outcome=outcome,
+            actor_id=actor_id,
+            resource_id=resource_id,
+        )
 
 
 def _get_runbook(request: Request, runbook_id: str):

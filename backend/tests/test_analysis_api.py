@@ -152,6 +152,13 @@ def test_full_analysis_runbook_approval_flow(tmp_path):
     assert published.status_code == 200
     assert published.json()["metadata"]["status"] == "published"
 
+    audit = client.get("/api/audit?limit=100")
+    assert audit.status_code == 200
+    event_types = {event["event_type"] for event in audit.json()}
+    assert "auth_login" in event_types
+    assert "runbook_approved" in event_types
+    assert "runbook_published" in event_types
+
 
 def test_analysis_requires_authentication(tmp_path):
     client = make_client(tmp_path)

@@ -38,6 +38,24 @@ def _require_session_configured(request: Request) -> None:
         )
 
 
+def _record_audit(
+    request: Request,
+    *,
+    event_type: str,
+    outcome: str,
+    actor_id: int | None = None,
+    metadata: dict | None = None,
+) -> None:
+    audit_store = getattr(request.app.state, "audit_store", None)
+    if audit_store is not None:
+        audit_store.record(
+            event_type=event_type,
+            outcome=outcome,
+            actor_id=actor_id,
+            metadata=metadata,
+        )
+
+
 def get_current_user(request: Request) -> UserRecord:
     """Load the current user from the signed session cookie."""
     _require_session_configured(request)
@@ -81,12 +99,20 @@ def login(request: Request, payload: LoginRequest) -> UserResponse:
     _require_session_configured(request)
     user = _get_store(request).get_by_email(payload.email)
     if user is None or not verify_password(payload.password, user.password_hash):
+        _record_audit(request, event_type="auth_login", outcome="failure")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password.",
         )
 
     request.session["user_id"] = user.id
+    _record_audit(
+        request,
+        event_type="auth_login",
+        outcome="success",
+        actor_id=user.id,
+        metadata={"role": user.role},
+    )
     return UserResponse(id=user.id, email=user.email, role=user.role)
 
 
@@ -94,8 +120,15 @@ def login(request: Request, payload: LoginRequest) -> UserResponse:
 def logout(request: Request, response: Response) -> None:
     """Clear the current session cookie."""
     _require_session_configured(request)
+    user_id = request.session.get("user_id")
     request.session.clear()
     response.delete_cookie("session")
+    _record_audit(
+        request,
+        event_type="auth_logout",
+        outcome="success",
+        actor_id=user_id if isinstance(user_id, int) else None,
+    )
 
 
 CurrentUser = Annotated[UserRecord, Depends(get_current_user)]
