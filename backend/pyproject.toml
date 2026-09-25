@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "living-runbook-backend"
 version = "0.1.0"
@@ -16,6 +20,13 @@ dev = [
     "httpx>=0.23.0",
     "ruff>=0.1.0",
 ]
+
+# Pin package discovery to the application package only. Without this,
+# setuptools flat-layout discovery aborts the whole build whenever any
+# other top-level directory is present (for example the local `data/`
+# directory), which breaks `pip install .` on the deployment host.
+[tool.setuptools.packages.find]
+include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
