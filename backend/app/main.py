@@ -57,7 +57,7 @@ def create_app(
             SessionMiddleware,
             secret_key=app_settings.session_secret,
             https_only=app_settings.session_https_only,
-            same_site="lax",
+            same_site=app_settings.session_same_site,
         )
 
     app.include_router(health_router)

@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -22,6 +23,7 @@ class Settings(BaseSettings):
     database_path: str = "./data/living_runbook.db"
     session_secret: str = Field(default="", repr=False)
     session_https_only: bool = True
+    session_same_site: Literal["lax", "strict", "none"] = "lax"
     cors_origins: list[str] = Field(default_factory=list)
 
     model_config = SettingsConfigDict(
