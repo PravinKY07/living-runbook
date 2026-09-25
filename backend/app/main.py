@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
+from app.api.audit import router as audit_router
 from app.api.auth import router as auth_router
 from app.api.health import router as health_router
 from app.api.jobs import router as jobs_router
@@ -64,6 +65,7 @@ def create_app(
     app.include_router(repositories_router)
     app.include_router(jobs_router)
     app.include_router(runbooks_router)
+    app.include_router(audit_router)
     return app
 
 

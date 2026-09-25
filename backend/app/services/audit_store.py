@@ -58,7 +58,7 @@ class SQLiteAuditStore:
         """Record a bounded, non-sensitive audit event."""
         safe_metadata = json.dumps(metadata or {}, separators=(",", ":"))
         if len(safe_metadata) > 2000:
-            safe_metadata = safe_metadata[:2000]
+            safe_metadata = json.dumps({"truncated": True}, separators=(",", ":"))
         with self._lock:
             self.initialize()
             self._connect().execute(
@@ -91,5 +91,24 @@ class SQLiteAuditStore:
                 ORDER BY id
                 """,
                 (resource_id,),
+            ).fetchall()
+            return tuple(dict(row) for row in rows)
+
+    def list_recent(self, limit: int = 100) -> tuple[dict, ...]:
+        """Return the most recent audit events, newest first.
+
+        ``limit`` is capped at 100 to prevent unbounded reads.
+        """
+        safe_limit = min(max(1, limit), 100)
+        with self._lock:
+            self.initialize()
+            rows = self._connect().execute(
+                """
+                SELECT event_type, actor_id, resource_id, outcome, metadata_json, created_at
+                FROM audit_events
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (safe_limit,),
             ).fetchall()
             return tuple(dict(row) for row in rows)
