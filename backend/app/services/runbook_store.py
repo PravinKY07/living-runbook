@@ -215,10 +215,12 @@ class SQLiteRunbookStore:
     def _draft_for_version(self, runbook_id: str, version: int) -> RunbookDraft:
         row = self._connect().execute(
             """
-            SELECT content, content_hash, provider, prompt_version, status,
-                   created_at, approved_by, approved_at
-            FROM runbook_versions
-            WHERE runbook_id = ? AND version = ?
+            SELECT rv.content, rv.content_hash, rv.provider, rv.prompt_version,
+                   rv.status, rv.created_at, rv.approved_by, rv.approved_at,
+                   r.repository_url, r.repository_commit
+            FROM runbook_versions AS rv
+            JOIN runbooks AS r ON r.id = rv.runbook_id
+            WHERE rv.runbook_id = ? AND rv.version = ?
             """,
             (runbook_id, version),
         ).fetchone()
@@ -232,8 +234,8 @@ class SQLiteRunbookStore:
             content=content,
             metadata=RunbookMetadata(
                 version=version,
-                repository_url=self._runbook_value(runbook_id, "repository_url"),
-                repository_commit=self._runbook_value(runbook_id, "repository_commit"),
+                repository_url=row["repository_url"],
+                repository_commit=row["repository_commit"],
                 provider=row["provider"],
                 prompt_version=row["prompt_version"],
                 content_hash=row["content_hash"],
@@ -243,15 +245,6 @@ class SQLiteRunbookStore:
                 approved_at=row["approved_at"],
             ),
         )
-
-    def _runbook_value(self, runbook_id: str, column: str) -> str | None:
-        row = self._connect().execute(
-            f"SELECT {column} FROM runbooks WHERE id = ?",
-            (runbook_id,),
-        ).fetchone()
-        if row is None:
-            raise RunbookNotFoundError("Runbook not found.")
-        return row[column]
 
     def _update_version_status(
         self,

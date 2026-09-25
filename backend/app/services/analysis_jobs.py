@@ -10,6 +10,7 @@ from app.models.jobs import AnalysisJob
 from app.security.evidence import EvidenceValidationError
 from app.security.url_policy import validate_github_repository_url
 from app.services.analysis_service import analyze_manifest
+from app.services.audit_store import SQLiteAuditStore
 from app.services.job_store import SQLiteJobStore
 from app.services.repository_loader import (
     RepositoryCleanupError,
@@ -28,12 +29,14 @@ class AnalysisJobManager:
         *,
         job_store: SQLiteJobStore,
         runbook_store: SQLiteRunbookStore,
+        audit_store: SQLiteAuditStore | None = None,
         loader: RepositoryLoader | None = None,
         writer: RunbookWriter | None = None,
         executor: Executor | None = None,
     ) -> None:
         self._job_store = job_store
         self._runbook_store = runbook_store
+        self._audit_store = audit_store
         self._loader = loader or RepositoryLoader()
         self._writer = writer or RunbookWriter()
         self._executor = executor or ThreadPoolExecutor(
@@ -47,6 +50,7 @@ class AnalysisJobManager:
         """Validate the URL, persist a queued job, and start processing."""
         repository = validate_github_repository_url(repository_url)
         job = self._job_store.create(repository.normalized_url)
+        self._audit("analysis_submitted", "success", resource_id=job.id)
         future = self._executor.submit(self._run, job.id, repository.normalized_url)
         with self._lock:
             self._futures[job.id] = future
@@ -65,6 +69,7 @@ class AnalysisJobManager:
 
     def _run(self, job_id: str, repository_url: str) -> None:
         self._job_store.update(job_id, status="running")
+        self._audit("analysis_started", "success", resource_id=job_id)
         try:
             with self._loader.load(repository_url) as loaded:
                 analysis = analyze_manifest(
@@ -78,9 +83,21 @@ class AnalysisJobManager:
                 status="completed",
                 runbook_id=stored.runbook_id,
             )
+            self._audit(
+                "analysis_completed",
+                "success",
+                resource_id=job_id,
+                metadata={"runbook_id": stored.runbook_id},
+            )
+        except RepositoryCleanupError:
+            self._job_store.update(
+                job_id,
+                status="failed",
+                error_message="Repository analysis failed and temporary cleanup needs attention.",
+            )
+            self._audit("repository_cleanup_failed", "failure", resource_id=job_id)
         except (
             EvidenceValidationError,
-            RepositoryCleanupError,
             RepositoryLoadError,
             RunbookApprovalError,
             KeyError,
@@ -93,4 +110,21 @@ class AnalysisJobManager:
                 job_id,
                 status="failed",
                 error_message="Repository analysis failed safely.",
+            )
+            self._audit("analysis_failed", "failure", resource_id=job_id)
+
+    def _audit(
+        self,
+        event_type: str,
+        outcome: str,
+        *,
+        resource_id: str,
+        metadata: dict | None = None,
+    ) -> None:
+        if self._audit_store is not None:
+            self._audit_store.record(
+                event_type=event_type,
+                outcome=outcome,
+                resource_id=resource_id,
+                metadata=metadata,
             )

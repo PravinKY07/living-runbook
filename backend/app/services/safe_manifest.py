@@ -102,49 +102,49 @@ def build_safe_manifest(
     skipped: list[ManifestSkip] = []
     total_bytes = 0
 
-    for directory, directory_names, file_names in _walk_without_symlinks(root):
-        for file_name in file_names:
-            path = Path(directory) / file_name
-            relative_path = path.relative_to(root).as_posix()
+    for directory, file_name in _walk_without_symlinks(root):
+        path = directory / file_name
+        relative_path = path.relative_to(root).as_posix()
+        safe_relative_path = redact_text(relative_path)
 
-            if path.is_symlink():
-                skipped.append(ManifestSkip(relative_path, "symlink"))
-                continue
+        if path.is_symlink():
+            skipped.append(ManifestSkip(safe_relative_path, "symlink"))
+            continue
 
-            try:
-                path.resolve().relative_to(root)
-            except ValueError as exc:
-                raise RepositoryLimitError("A repository path escaped the workspace root.") from exc
+        try:
+            path.resolve().relative_to(root)
+        except ValueError as exc:
+            raise RepositoryLimitError("A repository path escaped the workspace root.") from exc
 
-            if not is_allowed_file(relative_path):
-                skipped.append(ManifestSkip(relative_path, "not_allowlisted"))
-                continue
+        if not is_allowed_file(relative_path):
+            skipped.append(ManifestSkip(safe_relative_path, "not_allowlisted"))
+            continue
 
-            size_bytes = path.stat().st_size
-            if size_bytes > active_limits.max_file_bytes:
-                skipped.append(ManifestSkip(relative_path, "file_too_large"))
-                continue
+        size_bytes = path.stat().st_size
+        if size_bytes > active_limits.max_file_bytes:
+            skipped.append(ManifestSkip(safe_relative_path, "file_too_large"))
+            continue
 
-            if len(files) >= active_limits.max_files:
-                raise RepositoryLimitError("Repository exceeds the allowed file count.")
+        if len(files) >= active_limits.max_files:
+            raise RepositoryLimitError("Repository exceeds the allowed file count.")
 
-            try:
-                safe_path = validate_file_entry(relative_path, size_bytes, active_limits)
-            except FilePolicyError as exc:
-                raise RepositoryLimitError(str(exc)) from exc
+        try:
+            safe_path = validate_file_entry(relative_path, size_bytes, active_limits)
+        except FilePolicyError as exc:
+            raise RepositoryLimitError(str(exc)) from exc
 
-            total_bytes += size_bytes
-            if total_bytes > active_limits.max_total_bytes:
-                raise RepositoryLimitError("Repository exceeds the allowed total size.")
+        total_bytes += size_bytes
+        if total_bytes > active_limits.max_total_bytes:
+            raise RepositoryLimitError("Repository exceeds the allowed total size.")
 
-            content = path.read_text(encoding="utf-8", errors="replace")
-            files.append(
-                ManifestFile(
-                    path=safe_path,
-                    size_bytes=size_bytes,
-                    sanitized_content=redact_text(content),
-                )
+        content = path.read_text(encoding="utf-8", errors="replace")
+        files.append(
+            ManifestFile(
+                path=safe_path,
+                size_bytes=size_bytes,
+                sanitized_content=redact_text(content),
             )
+        )
 
     files.sort(key=lambda item: item.path)
     skipped.sort(key=lambda item: item.path)
@@ -157,7 +157,7 @@ def build_safe_manifest(
 
 
 def _walk_without_symlinks(root: Path):
-    """Yield directories while pruning symlinked directories."""
+    """Yield (directory, file_name) pairs while pruning symlinks."""
     pending = [root]
     while pending:
         directory = pending.pop()
@@ -166,6 +166,5 @@ def _walk_without_symlinks(root: Path):
                 continue
             if child.is_dir():
                 pending.append(child)
-                yield directory, [child.name], []
             elif child.is_file():
-                yield directory, [], [child.name]
+                yield directory, child.name

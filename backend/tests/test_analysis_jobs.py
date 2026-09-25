@@ -3,8 +3,9 @@ from pathlib import Path
 
 from app.security.url_policy import validate_github_repository_url
 from app.services.analysis_jobs import AnalysisJobManager
+from app.services.audit_store import SQLiteAuditStore
 from app.services.job_store import SQLiteJobStore
-from app.services.repository_loader import LoadedRepository
+from app.services.repository_loader import LoadedRepository, RepositoryCleanupError
 from app.services.runbook_store import SQLiteRunbookStore
 from app.services.safe_manifest import build_safe_manifest
 
@@ -58,6 +59,7 @@ def make_manager(tmp_path: Path) -> AnalysisJobManager:
     return AnalysisJobManager(
         job_store=SQLiteJobStore(database_path),
         runbook_store=SQLiteRunbookStore(database_path),
+        audit_store=SQLiteAuditStore(database_path),
         loader=FakeLoader(tmp_path),
         executor=InlineExecutor(),
     )
@@ -72,6 +74,12 @@ def test_job_runs_static_analysis_and_creates_runbook(tmp_path):
     completed = manager.get(job.id)
     assert completed.status == "completed"
     assert completed.runbook_id is not None
+    events = manager._audit_store.list_for_resource(job.id)
+    assert [event["event_type"] for event in events] == [
+        "analysis_submitted",
+        "analysis_started",
+        "analysis_completed",
+    ]
 
 
 def test_failed_job_returns_safe_error(tmp_path):
@@ -97,3 +105,42 @@ class FailingLoader:
         from app.services.repository_loader import RepositoryLoadError
 
         raise RepositoryLoadError("Repository clone failed safely.")
+
+
+class CleanupFailingLoader(FakeLoader):
+    def load(self, url: str):
+        return _CleanupFailingContext(super().load(url))
+
+
+class _CleanupFailingContext:
+    def __init__(self, context) -> None:
+        self._context = context
+
+    def __enter__(self):
+        return self._context.__enter__()
+
+    def __exit__(self, *args):
+        raise RepositoryCleanupError("Temporary repository workspace could not be removed.")
+
+
+def test_cleanup_failure_is_audited(tmp_path):
+    make_fixture(tmp_path)
+    database_path = str(tmp_path / "jobs.db")
+    manager = AnalysisJobManager(
+        job_store=SQLiteJobStore(database_path),
+        runbook_store=SQLiteRunbookStore(database_path),
+        audit_store=SQLiteAuditStore(database_path),
+        loader=CleanupFailingLoader(tmp_path),
+        executor=InlineExecutor(),
+    )
+
+    job = manager.submit("https://github.com/example/project")
+    manager.wait(job.id)
+
+    failed = manager.get(job.id)
+    assert failed.status == "failed"
+    assert "cleanup" in failed.error_message
+    assert any(
+        event["event_type"] == "repository_cleanup_failed"
+        for event in manager._audit_store.list_for_resource(job.id)
+    )

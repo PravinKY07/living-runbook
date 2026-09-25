@@ -13,10 +13,15 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.security.file_policy import FileLimits
-from app.security.url_policy import GitHubRepository, validate_github_repository_url
+from app.security.url_policy import (
+    GitHubRepository,
+    validate_github_repository_url,
+    validate_public_hostname,
+)
 from app.services.safe_manifest import SafeFileManifest, build_safe_manifest
 
 GitRunner = Callable[..., subprocess.CompletedProcess[str]]
+HostnameResolver = Callable[[str], list[str]]
 
 
 class RepositoryLoadError(RuntimeError):
@@ -37,8 +42,25 @@ class LoadedRepository:
 
 
 def _safe_git_environment() -> dict[str, str]:
-    """Return an environment that cannot prompt for credentials."""
-    environment = os.environ.copy()
+    """Return a minimal environment that cannot prompt for credentials."""
+    safe_names = {
+        "HOMEDRIVE",
+        "HOMEPATH",
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "PATH",
+        "SYSTEMROOT",
+        "TEMP",
+        "TMP",
+        "USERPROFILE",
+        "WINDIR",
+    }
+    environment = {
+        name: os.environ[name]
+        for name in safe_names
+        if name in os.environ
+    }
     environment.update(
         {
             "GIT_TERMINAL_PROMPT": "0",
@@ -59,11 +81,13 @@ class RepositoryLoader:
         clone_timeout_seconds: int = 120,
         limits: FileLimits | None = None,
         runner: GitRunner | None = None,
+        resolver: HostnameResolver | None = None,
     ) -> None:
         self._git_executable = git_executable
         self._clone_timeout_seconds = clone_timeout_seconds
         self._limits = limits or FileLimits()
         self._runner = runner or subprocess.run
+        self._resolver = resolver
 
     @contextmanager
     def load(self, url: str) -> Iterator[LoadedRepository]:
@@ -97,6 +121,10 @@ class RepositoryLoader:
         workspace: Path,
         destination: Path,
     ) -> None:
+        if self._resolver is None:
+            validate_public_hostname("github.com")
+        else:
+            validate_public_hostname("github.com", resolver=self._resolver)
         command = [
             self._git_executable,
             "-c",

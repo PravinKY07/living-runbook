@@ -36,7 +36,7 @@ class FakeGitRunner:
 
 def test_loader_uses_read_only_clone_flags_and_cleans_workspace():
     runner = FakeGitRunner()
-    loader = RepositoryLoader(runner=runner)
+    loader = RepositoryLoader(runner=runner, resolver=lambda _: ["8.8.8.8"])
     saved_root: Path | None = None
 
     with loader.load("https://github.com/example/project") as loaded:
@@ -64,7 +64,7 @@ def test_loader_uses_read_only_clone_flags_and_cleans_workspace():
 def test_loader_rejects_invalid_url_before_running_git():
     runner = FakeGitRunner()
 
-    with pytest.raises(URLPolicyError), RepositoryLoader(runner=runner).load(
+    with pytest.raises(URLPolicyError), RepositoryLoader(runner=runner, resolver=lambda _: ["8.8.8.8"]).load(
         "https://evil.example/project"
     ):
         pass
@@ -75,7 +75,7 @@ def test_loader_rejects_invalid_url_before_running_git():
 def test_loader_fails_safely_when_clone_fails():
     runner = FakeGitRunner(clone_returncode=1)
 
-    with pytest.raises(RepositoryLoadError), RepositoryLoader(runner=runner).load(
+    with pytest.raises(RepositoryLoadError), RepositoryLoader(runner=runner, resolver=lambda _: ["8.8.8.8"]).load(
         "https://github.com/example/project"
     ):
         pass

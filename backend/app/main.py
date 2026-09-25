@@ -9,6 +9,7 @@ from app.api.repositories import router as repositories_router
 from app.api.runbooks import router as runbooks_router
 from app.config import Settings, get_settings
 from app.services.analysis_jobs import AnalysisJobManager
+from app.services.audit_store import SQLiteAuditStore
 from app.services.job_store import SQLiteJobStore
 from app.services.runbook_store import SQLiteRunbookStore
 from app.services.user_store import SQLiteUserStore
@@ -34,9 +35,11 @@ def create_app(
     app.state.settings = app_settings
     app.state.user_store = user_store or SQLiteUserStore(app_settings.database_path)
     app.state.runbook_store = runbook_store or SQLiteRunbookStore(app_settings.database_path)
+    app.state.audit_store = SQLiteAuditStore(app_settings.database_path)
     app.state.job_manager = job_manager or AnalysisJobManager(
         job_store=SQLiteJobStore(app_settings.database_path),
         runbook_store=app.state.runbook_store,
+        audit_store=app.state.audit_store,
     )
 
     if app_settings.cors_origins:
