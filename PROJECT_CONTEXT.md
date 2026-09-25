@@ -1,212 +1,130 @@
-# Project Handoff Context
+# Living Runbook Generator — Reviewer Context
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
-## Project
+## Project overview
 
-Project name: `living-runbook`
+Living Runbook Generator is a secure, evidence-backed documentation system for public GitHub repositories. It analyzes a repository's service structure, dependencies, configuration, and failure-handling paths, then produces a Markdown runbook for engineers.
 
-Local folder:
+The product is intentionally not a generic chatbot or a simple repository summarizer. Important findings must include valid source-file and line-number evidence.
 
-```text
-C:\Users\user\OneDrive\Desktop\living-runbook
-```
+## MVP scope
 
-Current files:
+The planned MVP includes:
 
-```text
-AGENTS.md
-README.md
-PROJECT_CONTEXT.md
-```
-
-The `backend/` and `frontend/` directories are planned but may not exist yet. The application code has not been implemented yet.
-
-## Product decision
-
-Build a secure, evidence-backed Living Runbook Generator.
-
-A user submits a public GitHub repository. The system analyzes the codebase, configuration, dependencies, and failure-handling paths, then generates a practical Markdown runbook. The runbook must be kept current through a GitHub Action that proposes changes for human review.
-
-The product is not a generic chatbot or a generic repository summarizer. Important claims must cite repository evidence.
-
-## Approved MVP scope
-
-- Public GitHub repository submission
+- Public GitHub repository URL submission
 - Read-only repository loading
 - GitHub URL validation and SSRF protection
 - Safe file allowlist and resource limits
 - Secret and PII redaction before model calls
-- Static analysis; never execute repository code
-- Four subagents: Service Mapper, Failure Analyzer, Dependency Mapper, Configuration Analyzer
-- Structured JSON outputs
-- Evidence-backed Markdown runbooks
-- Source-file and line-reference validation
-- Final runbook secret scan
+- No execution of analyzed repository code
+- Service Mapper analysis
+- Failure Analyzer analysis
+- Dependency Mapper analysis
+- Configuration Analyzer analysis
+- Structured JSON analysis results
+- Evidence-validated Markdown runbooks
+- Final runbook secret scanning
 - Minimal React/Vite frontend
-- Q&A over sanitized runbook and approved analysis
+- Safe Q&A limited to sanitized project data
 - Runbook versions and diffs
-- GitHub Action that proposes pull-request changes
+- Manually triggered GitHub Action that proposes pull-request updates
 - Seeded demo authentication with Editor and Approver roles
-- Human approval before official publishing
+- Human approval before publishing an official runbook
 - Audit logging
 
-## Explicitly excluded from MVP
+## Technology
 
-- Slack
-- PagerDuty
-- Automatic production remediation
-- Automatic service restarts
-- Arbitrary shell execution
-- Full malware scanning
-- SSO, SAML, SCIM, billing
-- Multi-organization/multi-tenant support
-- Predictive incident prevention
-- Automatic postmortems
-- Complex natural-language database queries
-- Jev AI
-- Broad web browsing or unrestricted model network access
-- Automatic publishing without approval
+- **Backend:** Python 3.11+, FastAPI, Pydantic
+- **Frontend:** React with Vite
+- **Database:** SQLite for the MVP
+- **Backend hosting:** Render or another Python-compatible host with persistent storage
+- **Frontend hosting:** Vercel
+- **Model access:** IBM watsonx.ai and Granite when available, accessed through a model gateway
+- **Fallbacks:** StaticProvider for AST/regex analysis and MockProvider for tests and fallback demos
+- **Development environment:** IBM Bob IDE
 
-## Confirmed technical decisions
+All model providers use the same gateway. Output must be labeled as `watsonx`, `static`, or `mock`; fallback output must never be presented as Granite output.
 
-- IBM Bob is used to build the project; it is not a runtime dependency.
-- Frontend: React + Vite, intended for Vercel.
-- Backend: Python 3.11+, FastAPI, intended for Render or another Python-compatible host.
-- Database: SQLite for the MVP on persistent disk; PostgreSQL later if needed.
-- Authentication: one seeded demo user, Argon2 password hashing, HTTP-only session cookie, backend-enforced `editor` and `approver` roles, no public registration.
-- Repository storage: temporary only; retain sanitized analysis, runbooks, metadata, approvals, and audit events, not raw source code.
-- Jobs: one in-process asynchronous worker is enough for the MVP; do not add Redis, Celery, or Kafka yet.
-- IBM watsonx.ai must pass a small preflight before full agent implementation.
-- All model calls must go through one model gateway.
-- GitHub Action starts with manual `workflow_dispatch`; push-to-main is added only after the manual flow works. It creates proposed changes, never direct publishing.
-- Jev AI is not included until its API and data-handling security are known.
+## Security model
 
-## Security requirements
+- Accept only validated public GitHub HTTPS repository URLs initially.
+- Reject local, private, link-local, internal, malformed, and unsupported destinations.
+- Treat repository content as untrusted data.
+- Never execute repository source, scripts, tests, migrations, Docker files, or package hooks.
+- Use temporary workspaces and delete them after success or failure.
+- Allowlist files and enforce repository, file, path, and time limits.
+- Ignore or reject secrets, credentials, private keys, databases, archives, and binaries.
+- Redact secrets and PII before model calls and scan the final Markdown again.
+- Validate structured model output with schemas.
+- Verify that cited files exist and line numbers are valid.
+- Never execute generated commands.
+- Use Argon2 password hashing and HTTP-only sessions.
+- Enforce Editor and Approver roles in the backend.
+- Require human approval before publishing.
+- Keep audit logs free of raw secrets and unnecessary source code.
 
-- Treat all repository content as untrusted data.
-- Reject non-GitHub/private/local/internal URLs initially.
-- Never execute analyzed repository code, scripts, tests, migrations, Docker files, or package hooks.
-- Reject or skip `.env`, private keys, credentials, databases, archives, and binaries.
-- Redact secrets and PII before model calls.
-- Never log original secret values.
-- Treat prompt-injection text as data, not instructions.
-- Do not give the model a general shell or unrestricted filesystem/network tool.
-- Validate every model response with Pydantic schemas.
-- Verify source file and line references.
-- Classify generated commands; never execute them.
-- Scan final Markdown for secrets.
-- Enforce authentication and roles in the backend.
-- Require human approval before publishing an official runbook.
-- Log security-relevant events without secrets or unnecessary source code.
-
-## Current exact point in the setup
-
-We were setting up the local project and Git/GitHub workflow.
-
-The user already has:
-
-- A laptop
-- A GitHub account
-
-The user was instructed to run Git identity commands in PowerShell:
-
-```powershell
-git config --global user.name "Your Actual Name"
-git config --global user.email "your-github-email@example.com"
-```
-
-Then verify:
-
-```powershell
-git config --global user.name
-git config --global user.email
-```
-
-The project should eventually be committed to a GitHub repository so an online IBM Bob workspace can access it. The official event page points to the Lablab IBM Bob 2.0 Hackathon site. Because the event is online, Bob may not be able to read the local Windows path directly. Push the project to GitHub, then connect/import the repository inside the event workspace.
-
-## IBM Bob access situation
-
-The official IBM Bob 2.0 Hackathon Guide says IBM Bob IDE is required for the submission. Do not rely on a browser-only editor or assume the local path is visible to a web tool.
-
-The correct setup is:
-
-1. Install the latest Bob IDE v2.0.x; the guide says v1.0.3 and v2.0.0 stop working on September 30, 2026, and v2.0.0 must be upgraded to v2.0.2 or later.
-2. Use the registration email to sign in with the hackathon-provisioned Bob account, not a personal Bob account.
-3. Create an IBMid if needed and complete authentication through the browser.
-4. In Bob IDE Settings, select the hackathon instance named `ibm-coding-challenge-uat (region: us-east)`.
-5. Open the local project folder in Bob IDE:
+## Intended architecture
 
 ```text
-C:\Users\user\OneDrive\Desktop\living-runbook
+React/Vite frontend
+        |
+FastAPI backend
+  - authentication and roles
+  - URL validation and read-only repository loading
+  - temporary workspace and file policy
+  - redaction and resource limits
+  - model gateway
+      - Service Mapper
+      - Failure Analyzer
+      - Dependency Mapper
+      - Configuration Analyzer
+  - structured-output and evidence validation
+  - Runbook Writer
+  - final secret scan
+  - draft/version storage
+  - human approval
+  - audit logging
 ```
 
-6. Ask Bob in the IDE chat interface to read `AGENTS.md` and `README.md`.
+The four analysis components operate on the sanitized repository manifest. Raw repository content is temporary; sanitized analysis, runbooks, metadata, approvals, and audit events are retained.
 
-The guide also requires submission evidence: create a `bob_sessions/` directory in the final repository and upload PNG screenshots of the Bob task session consumption summaries for all relevant tasks. Capture screenshots during the build, not only at the end. The GitHub repository is still useful for backup, but the required Bob evidence must come from the Bob IDE Tasks view.
+## Reviewer demo flow
 
-The guide states that 40 Bobcoins are provisioned for the hackathon account. Monitor usage under Bob IDE Settings and avoid using a personal account by mistake.
+The intended demonstration is:
 
-## Next steps after returning
+1. Sign in with a seeded demo user.
+2. Submit the safe public demo repository.
+3. Watch analysis progress.
+4. Review the four structured analysis sections.
+5. Open source references and verify file/line evidence.
+6. Review the generated Markdown runbook.
+7. Ask a question using only the sanitized runbook and approved analysis.
+8. Compare runbook versions if available.
+9. Sign in as an Approver and approve the draft.
+10. Confirm the audit history and proposed GitHub Action update.
 
-1. Verify Git identity in PowerShell.
-2. Create the GitHub repository if it does not exist.
-3. Initialize/commit/push `AGENTS.md` and `README.md` from the local project.
-4. Register/open the Lablab IBM Bob event workspace.
-5. Connect `living-runbook` from GitHub.
-6. Ask Bob in read-only Ask mode:
+## GitHub Action behavior
 
-```text
-Read AGENTS.md and README.md completely. Do not modify files. Summarize the project, approved scope, exclusions, security rules, and next phase. Confirm which files are visible.
-```
+The action begins with `workflow_dispatch`. It analyzes changes through the hosted backend, creates a versioned runbook diff, and proposes a pull request for human review. It does not execute repository code or publish directly.
 
-7. Use Plan mode for Phase 0.
-8. Use Agent mode only after reviewing the plan.
+## Current implementation status
 
-## Exact Phase 0 prompt
+This checkout currently contains the project documentation, environment template, GitHub workflow directory, and backend environment directory. The application source and frontend implementation should be added and tested during the hackathon build. Reviewers should use the README and demo documentation for the latest runnable commands and status.
 
-```text
-Read AGENTS.md completely.
+No credentials, API keys, passwords, private repository data, or `.env` values belong in this document or the public repository.
 
-Implement Phase 0 only: Project Foundation.
+## Repository documentation
 
-Requirements:
-- Create only the files needed for Phase 0.
-- Add .env.example.
-- Add .gitignore.
-- Create the backend project structure.
-- Add FastAPI configuration.
-- Add GET /api/health.
-- Add basic tests.
-- Do not implement the frontend yet.
-- Do not implement IBM watsonx.ai yet.
-- Do not implement repository analysis yet.
-- Do not add excluded features.
-- Do not expose secrets.
-- Run the tests and report the result in plain English.
-```
+- [`README.md`](./README.md) — public overview and setup
+- [`AGENTS.md`](./AGENTS.md) — project source of truth, architecture, security requirements, and implementation rules
+- [`.env.example`](./.env.example) — safe configuration template
+- `bob_sessions/` — required IBM Bob task-session evidence screenshots
 
-## Important: never put these in the repository or chat
+## Scope boundaries
 
-- IBM watsonx API key
-- GitHub personal access token
-- Real passwords
-- Private keys
-- Real customer data
-- Production credentials
+The MVP does not include Slack, PagerDuty, automatic production remediation, service restarts, arbitrary command execution, full malware scanning, SSO/SAML/SCIM, multi-tenant support, predictive incident prevention, automatic postmortems, broad web browsing, Jev AI, or automatic publishing without human approval.
 
-Use a private `.env` file locally, GitHub Secrets for actions, and deployment environment variables for hosting.
+## MVP success criteria
 
-## How to continue a new chat
-
-Start a new coding session in the project folder and say:
-
-```text
-Read AGENTS.md and PROJECT_CONTEXT.md completely.
-
-We are preparing the Living Runbook Generator for the IBM Bob 2.0 hackathon.
-
-Tell me the current project status and the next unfinished setup step. Do not modify files until I confirm the plan.
-```
-
-After switching to implementation mode, continue with the exact Phase 0 prompt above.
+The MVP is successful when a public repository can be analyzed safely, an evidence-backed draft runbook can be generated and inspected, Q&A remains limited to sanitized project data, changes can be versioned, and an official runbook cannot be published without human approval.
