@@ -277,6 +277,10 @@ label {
   background: #f8fafc;
 }
 
+.answer-text {
+  white-space: pre-line;
+}
+
 .answer p:last-child {
   margin-bottom: 0;
 }

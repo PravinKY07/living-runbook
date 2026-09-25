@@ -260,7 +260,7 @@ function RunbookView({ runbook, runbookId, user, onRunbook, onError }) {
         </form>
         {answer && (
           <div className="answer">
-            <p>{answer.answer}</p>
+            <p className="answer-text">{answer.answer}</p>
             {answer.citations.length > 0 && (
               <p className="muted">Citations: {answer.citations.join(", ")}</p>
             )}
