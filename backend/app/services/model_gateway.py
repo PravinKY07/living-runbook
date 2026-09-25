@@ -5,10 +5,15 @@ provider selection behind one gateway makes the analysis components independent
 of how results are produced.
 """
 
+from collections.abc import Callable
 from enum import Enum
 from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
+
+from app.models.analysis import AnalysisResult
+from app.services.analysis_service import analyze_manifest
+from app.services.safe_manifest import SafeFileManifest, manifest_from_dict
 
 MAX_OUTPUT_TOKENS = 4000
 MAX_TIMEOUT_SECONDS = 60.0
@@ -29,6 +34,7 @@ class GatewayRequest(BaseModel):
     model_role: str = Field(default="analysis", min_length=1, max_length=50)
     max_output_tokens: int = Field(default=1200, ge=1, le=MAX_OUTPUT_TOKENS)
     timeout_seconds: float = Field(default=15.0, gt=0, le=MAX_TIMEOUT_SECONDS)
+    analysis_input: dict[str, Any] | None = None
 
 
 class ProviderResponse(BaseModel):
@@ -57,7 +63,24 @@ class StaticProvider:
 
     name = ProviderName.STATIC
 
+    def __init__(
+        self,
+        analyzer: Callable[[SafeFileManifest], AnalysisResult] = analyze_manifest,
+    ) -> None:
+        self._analyzer = analyzer
+
     def generate(self, request: GatewayRequest) -> ProviderResponse:
+        if request.analysis_input is not None:
+            try:
+                manifest = manifest_from_dict(request.analysis_input)
+                result = self._analyzer(manifest)
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ProviderUnavailable("Static analysis input is invalid.") from exc
+            return ProviderResponse(
+                provider=self.name,
+                model_role=request.model_role,
+                output=result.model_dump(mode="json"),
+            )
         return ProviderResponse(
             provider=self.name,
             model_role=request.model_role,
@@ -65,7 +88,7 @@ class StaticProvider:
                 "status": "static_analysis_ready",
                 "task": request.task,
                 "findings": [],
-                "note": "Static analyzer modules are added in Phase 3.",
+                "note": "Provide a sanitized manifest for repository analysis.",
             },
         )
 

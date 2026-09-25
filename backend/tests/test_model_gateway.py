@@ -25,6 +25,31 @@ def test_static_provider_is_labeled_static():
     assert response.output["status"] == "static_analysis_ready"
 
 
+def test_static_provider_runs_validated_manifest_analysis():
+    request = GatewayRequest(
+        task="service_mapper",
+        sanitized_content="internal sanitized manifest",
+        analysis_input={
+            "files": [
+                {
+                    "path": "app.py",
+                    "size_bytes": 60,
+                    "sanitized_content": "from fastapi import FastAPI\n\n@app.get('/health')\ndef health():\n    return {}\n",
+                }
+            ],
+            "skipped": [],
+            "total_bytes": 60,
+            "repository_commit": "abc1234",
+        },
+    )
+
+    response = ModelGateway().generate(ProviderName.STATIC, request)
+
+    assert response.provider == ProviderName.STATIC
+    assert response.output["provider"] == "static"
+    assert response.output["service"]["entrypoints"][0]["kind"] == "route"
+
+
 def test_mock_provider_is_labeled_mock():
     response = ModelGateway().generate(ProviderName.MOCK, make_request())
 

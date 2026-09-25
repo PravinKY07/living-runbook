@@ -45,6 +45,50 @@ class SafeFileManifest:
     repository_commit: str | None = None
 
 
+def manifest_to_dict(manifest: SafeFileManifest) -> dict:
+    """Serialize a sanitized manifest for an internal provider request."""
+    return {
+        "files": [
+            {
+                "path": item.path,
+                "size_bytes": item.size_bytes,
+                "sanitized_content": item.sanitized_content,
+            }
+            for item in manifest.files
+        ],
+        "skipped": [
+            {"path": item.path, "reason": item.reason}
+            for item in manifest.skipped
+        ],
+        "total_bytes": manifest.total_bytes,
+        "repository_commit": manifest.repository_commit,
+    }
+
+
+def manifest_from_dict(data: dict) -> SafeFileManifest:
+    """Rebuild a manifest from internal, already-sanitized provider data."""
+    if not isinstance(data, dict):
+        raise TypeError("Manifest data must be an object.")
+    files = tuple(
+        ManifestFile(
+            path=str(item["path"]),
+            size_bytes=int(item["size_bytes"]),
+            sanitized_content=redact_text(str(item["sanitized_content"])),
+        )
+        for item in data.get("files", [])
+    )
+    skipped = tuple(
+        ManifestSkip(path=str(item["path"]), reason=str(item["reason"]))
+        for item in data.get("skipped", [])
+    )
+    return SafeFileManifest(
+        files=files,
+        skipped=skipped,
+        total_bytes=int(data.get("total_bytes", 0)),
+        repository_commit=data.get("repository_commit"),
+    )
+
+
 def build_safe_manifest(
     root: Path,
     *,
