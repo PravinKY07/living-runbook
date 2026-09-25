@@ -1,20 +1,34 @@
 """Seed the two demo users without printing passwords or hashes."""
 
+import getpass
 import os
+import sys
 
 from app.config import get_settings
 from app.services.demo_seed import seed_demo_users
 from app.services.user_store import SQLiteUserStore
 
 
-def main() -> None:
-    editor_password = os.getenv("DEMO_EDITOR_PASSWORD")
-    approver_password = os.getenv("DEMO_APPROVER_PASSWORD")
-
-    if not editor_password or not approver_password:
+def _read_password(environment_name: str, prompt: str) -> str:
+    value = os.getenv(environment_name)
+    if value:
+        return value
+    if not sys.stdin.isatty():
         raise SystemExit(
-            "Set DEMO_EDITOR_PASSWORD and DEMO_APPROVER_PASSWORD before seeding."
+            f"Set {environment_name} in a private runtime environment before seeding."
         )
+    return getpass.getpass(prompt)
+
+
+def main() -> None:
+    editor_password = _read_password(
+        "DEMO_EDITOR_PASSWORD",
+        "Choose the Editor demo password: ",
+    )
+    approver_password = _read_password(
+        "DEMO_APPROVER_PASSWORD",
+        "Choose the Approver demo password: ",
+    )
 
     settings = get_settings()
     store = SQLiteUserStore(settings.database_path)

@@ -42,7 +42,7 @@ function LoginForm({ onLogin }) {
   return (
     <main className="shell centered">
       <section className="card auth-card">
-        <p className="eyebrow">IBM Bob 2.0 Hackathon</p>
+        <p className="eyebrow">Secure analysis workspace</p>
         <h1>Living Runbook Generator</h1>
         <p className="muted">
           Safe, evidence-backed operational runbooks from a public GitHub repository.
