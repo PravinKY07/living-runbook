@@ -122,6 +122,7 @@ def test_full_analysis_runbook_approval_flow(tmp_path):
     assert answer.json()["citations"]
     assert "**" not in answer.json()["answer"]
     assert "No external calls" not in answer.json()["answer"]
+    assert "Confirm the cited file" not in answer.json()["answer"]
     assert "Exception-handling path detected" in answer.json()["answer"]
 
     assert client.post(f"/api/runbooks/{runbook_id}/approve").status_code == 403

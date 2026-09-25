@@ -149,7 +149,7 @@ def _question_terms(question: str) -> set[str]:
 
 def _matching_section_lines(lines: list[str], question_terms: set[str]) -> list[tuple[int, str]]:
     section_terms = {
-        "failure": ("failure", "diagnostic"),
+        "failure": ("failure",),
         "dependency": ("dependency", "dependencies"),
         "dependencies": ("dependency", "dependencies"),
         "configuration": ("configuration", "config"),
