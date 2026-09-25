@@ -97,6 +97,14 @@ def ask_runbook(
     _user: CurrentUser,
 ) -> AnswerResponse:
     """Answer a question from focused sections of the stored runbook only."""
+    if _is_prompt_injection_question(payload.question):
+        return AnswerResponse(
+            answer=(
+                "I can only answer from the sanitized runbook and cannot reveal "
+                "hidden instructions or private files."
+            ),
+            citations=[],
+        )
     if _is_sensitive_question(payload.question):
         return AnswerResponse(
             answer="I cannot provide credentials, secrets, or other sensitive values.",
@@ -156,6 +164,21 @@ def ask_runbook(
     )
 
 
+def _is_prompt_injection_question(question: str) -> bool:
+    """Refuse attempts to override the runbook or reveal hidden context."""
+    normalized = question.lower()
+    injection_terms = (
+        "ignore previous",
+        "ignore the runbook",
+        "system prompt",
+        "developer message",
+        "reveal instructions",
+        "print the contents",
+        ".env",
+    )
+    return any(term in normalized for term in injection_terms)
+
+
 def _is_sensitive_question(question: str) -> bool:
     """Prevent Q&A from being used to request credentials or secrets."""
     normalized = question.lower()
@@ -185,11 +208,17 @@ def _is_action_request(question: str) -> bool:
 def _question_terms(question: str) -> set[str]:
     ignored = {
         "and",
+        "application",
         "are",
         "detected",
         "does",
+        "for",
         "from",
         "how",
+        "policy",
+        "project",
+        "provider",
+        "service",
         "the",
         "this",
         "what",
