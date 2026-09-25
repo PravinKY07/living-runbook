@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     database_path: str = "./data/living_runbook.db"
     session_secret: str = Field(default="", repr=False)
     session_https_only: bool = True
+    watsonx_apikey: str = Field(default="", repr=False)
+    watsonx_project_id: str = ""
+    watsonx_url: str = ""
+    code_analysis_model: str = ""
+    writer_model: str = ""
 
     model_config = SettingsConfigDict(
         extra="ignore",
