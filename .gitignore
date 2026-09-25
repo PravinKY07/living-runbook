@@ -18,3 +18,4 @@ dist
 coverage
 
 .DS_Store
+*.egg-info/
