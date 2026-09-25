@@ -96,18 +96,21 @@ def ask_runbook(
     payload: QuestionRequest,
     _user: CurrentUser,
 ) -> AnswerResponse:
-    """Answer a question from the stored runbook only."""
+    """Answer a question from focused sections of the stored runbook only."""
     draft = _get_runbook(request, runbook_id).draft
-    question_terms = {
-        term
-        for term in re.findall(r"[a-z0-9_]+", payload.question.lower())
-        if len(term) > 2
-    }
-    matches: list[tuple[int, str]] = []
-    for line_number, line in enumerate(draft.content.splitlines(), start=1):
-        lowered = line.lower()
-        if line.strip() and any(term in lowered for term in question_terms):
-            matches.append((line_number, line.strip()))
+    question_terms = _question_terms(payload.question)
+    lines = draft.content.splitlines()
+    section_lines = _matching_section_lines(lines, question_terms)
+    candidate_lines = section_lines or [
+        (line_number, line)
+        for line_number, line in enumerate(lines, start=1)
+        if any(term in line.lower() for term in question_terms)
+    ]
+    matches = [
+        (line_number, cleaned)
+        for line_number, line in candidate_lines
+        if (cleaned := _clean_runbook_line(line))
+    ][:5]
 
     if not matches:
         return AnswerResponse(
@@ -115,11 +118,83 @@ def ask_runbook(
             citations=[],
         )
 
-    answer_lines = [f"- {line}" for _, line in matches[:5]]
+    answer_lines = [f"- {line}" for _, line in matches]
     return AnswerResponse(
-        answer="Relevant entries from the current runbook:\n" + "\n".join(answer_lines),
-        citations=[f"runbook:{line_number}" for line_number, _ in matches[:5]],
+        answer="Relevant evidence from the current runbook:\n" + "\n".join(answer_lines),
+        citations=[f"runbook:{line_number}" for line_number, _ in matches],
     )
+
+
+def _question_terms(question: str) -> set[str]:
+    ignored = {
+        "and",
+        "are",
+        "detected",
+        "does",
+        "from",
+        "how",
+        "the",
+        "this",
+        "what",
+        "were",
+        "which",
+        "with",
+    }
+    return {
+        term
+        for term in re.findall(r"[a-z0-9_]+", question.lower())
+        if len(term) > 2 and term not in ignored
+    }
+
+
+def _matching_section_lines(lines: list[str], question_terms: set[str]) -> list[tuple[int, str]]:
+    section_terms = {
+        "failure": ("failure", "diagnostic"),
+        "dependency": ("dependency", "dependencies"),
+        "dependencies": ("dependency", "dependencies"),
+        "configuration": ("configuration", "config"),
+        "endpoint": ("entry point", "entrypoints", "external call"),
+        "entry": ("entry point", "entrypoints", "external call"),
+        "health": ("entry point", "entrypoints", "external call"),
+    }
+    wanted_heading: tuple[str, ...] | None = None
+    for term in question_terms:
+        for key, headings in section_terms.items():
+            if key in term or term in key:
+                wanted_heading = headings
+                break
+        if wanted_heading:
+            break
+    if wanted_heading is None:
+        return []
+
+    matches: list[tuple[int, str]] = []
+    in_section = False
+    for line_number, line in enumerate(lines, start=1):
+        if line.startswith("## "):
+            heading = line[3:].strip().lower()
+            in_section = any(heading.startswith(candidate) for candidate in wanted_heading)
+            continue
+        if in_section:
+            matches.append((line_number, line))
+    return matches
+
+
+def _clean_runbook_line(line: str) -> str | None:
+    text = line.strip()
+    if not text or text.startswith(("#", ">", "|", "```")):
+        return None
+    text = re.sub(r"^[-*]\s+", "", text)
+    location = ""
+    location_match = re.search(r"\s+—\s+`([^`]+)`\s*$", text)
+    if location_match:
+        location = f" ({location_match.group(1)})"
+        text = text[: location_match.start()].strip()
+    text = text.replace("**", "").replace("`", "")
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text or text.lower().startswith("no "):
+        return None
+    return f"{text}{location}"
 
 
 def _store(request: Request) -> SQLiteRunbookStore:

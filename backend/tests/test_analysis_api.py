@@ -30,7 +30,7 @@ class FixtureLoader:
 
     def load(self, url: str):
         (self.root / "app.py").write_text(
-            "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/health')\ndef health():\n    return {'status': 'ok'}\n",
+            "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/health')\ndef health():\n    return {'status': 'ok'}\n\n@app.get('/orders')\ndef orders():\n    try:\n        return {'status': 'ok'}\n    except Exception:\n        return {'status': 'degraded'}\n",
             encoding="utf-8",
         )
         (self.root / "requirements.txt").write_text("fastapi>=0.100.0\n", encoding="utf-8")
@@ -115,11 +115,14 @@ def test_full_analysis_runbook_approval_flow(tmp_path):
 
     answer = client.post(
         f"/api/runbooks/{runbook_id}/ask",
-        json={"question": "What is the health endpoint?"},
+        json={"question": "What failure modes were detected?"},
     )
     assert answer.status_code == 200
     assert answer.json()["provider"] == "static"
     assert answer.json()["citations"]
+    assert "**" not in answer.json()["answer"]
+    assert "No external calls" not in answer.json()["answer"]
+    assert "Exception-handling path detected" in answer.json()["answer"]
 
     assert client.post(f"/api/runbooks/{runbook_id}/approve").status_code == 403
     client.post("/api/auth/logout")
