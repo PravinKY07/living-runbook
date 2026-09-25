@@ -51,8 +51,11 @@ class SQLiteUserStore:
             connection = self._connect()
             connection.execute(
                 """
-                INSERT OR IGNORE INTO users (email, role, password_hash)
+                INSERT INTO users (email, role, password_hash)
                 VALUES (?, ?, ?)
+                ON CONFLICT(email) DO UPDATE SET
+                    role = excluded.role,
+                    password_hash = excluded.password_hash
                 """,
                 (normalized_email, role, hash_password(password)),
             )

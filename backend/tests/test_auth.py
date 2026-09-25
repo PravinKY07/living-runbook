@@ -7,6 +7,7 @@ from app.api.auth import require_roles
 from app.config import Settings
 from app.main import create_app
 from app.models.user import UserRecord
+from app.security.passwords import verify_password
 from app.services.demo_seed import seed_demo_users
 from app.services.user_store import SQLiteUserStore
 
@@ -128,3 +129,31 @@ def test_auth_is_unavailable_without_session_secret(tmp_path):
     response = login(client, "editor@example.test", "any-password")
 
     assert response.status_code == 503
+
+
+def test_seeding_existing_demo_user_updates_password(tmp_path):
+    settings = Settings(
+        _env_file=None,
+        database_path=str(tmp_path / "auth.db"),
+    )
+    store = SQLiteUserStore(settings.database_path)
+    seed_demo_users(
+        store,
+        editor_email="editor@example.test",
+        editor_password="first-password",
+        approver_email="approver@example.test",
+        approver_password="approver-password",
+    )
+    seed_demo_users(
+        store,
+        editor_email="editor@example.test",
+        editor_password="replacement-password",
+        approver_email="approver@example.test",
+        approver_password="approver-password",
+    )
+
+    user = store.get_by_email("editor@example.test")
+
+    assert user is not None
+    assert verify_password("replacement-password", user.password_hash) is True
+    assert verify_password("first-password", user.password_hash) is False
