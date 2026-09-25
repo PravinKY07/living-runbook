@@ -1,6 +1,7 @@
 from concurrent.futures import Future
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.config import Settings
@@ -174,6 +175,60 @@ def test_analysis_requires_authentication(tmp_path):
     )
 
     assert response.status_code == 401
+
+
+UNSAFE_REPOSITORY_URLS = [
+    "http://localhost:8000/x",
+    "http://127.0.0.1/x",
+    "http://10.0.0.5/x",
+    "http://169.254.169.254/latest/meta-data",
+    "file:///etc/passwd",
+    "https://gitlab.com/a/b",
+    "https://user:pass@github.com/a/b",
+    "http://github.com/a/b",
+    "https://github.com/a/b/tree/main/src",
+    "https://github.com/a/../b",
+    "https://github.com/a/b?x=1",
+    "https://github.com/a b",
+    "not-a-url-at-all",
+]
+
+
+@pytest.mark.parametrize("repository_url", UNSAFE_REPOSITORY_URLS)
+def test_unsafe_repository_url_is_refused_with_a_safe_client_error(tmp_path, repository_url):
+    """An unsafe destination must be refused with a safe 4xx, never a 500.
+
+    The repository URL policy runs synchronously during submission, so its
+    error has to be translated into a client error by the endpoint.
+    """
+    client = make_client(tmp_path)
+    login(client, "editor@example.test", "editor-test-password")
+
+    response = client.post(
+        "/api/repositories/analyze",
+        json={"repository_url": repository_url},
+    )
+
+    assert response.status_code == 400
+    detail = response.json()["detail"]
+    assert isinstance(detail, str)
+    assert detail
+    # The refusal must describe the policy, not echo the submitted value back.
+    assert repository_url not in detail
+    # A refused submission must not look like a queued job.
+    assert "id" not in response.json()
+
+
+def test_unsafe_repository_url_is_refused_for_approver_role(tmp_path):
+    client = make_client(tmp_path)
+    login(client, "approver@example.test", "approver-test-password")
+
+    response = client.post(
+        "/api/repositories/analyze",
+        json={"repository_url": "http://169.254.169.254/latest/meta-data"},
+    )
+
+    assert response.status_code == 400
 
 
 def test_qa_topics_are_focused_and_safe(tmp_path):
