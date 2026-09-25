@@ -1,7 +1,7 @@
 :root {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #e8eef7;
-  background: #0b1220;
+  color: #172033;
+  background: #f4f6f8;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -14,9 +14,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top right, rgba(37, 99, 235, 0.18), transparent 32rem),
-    #0b1220;
+  background: #f4f6f8;
 }
 
 button,
@@ -25,13 +23,18 @@ input {
 }
 
 button {
-  border: 0;
-  border-radius: 0.6rem;
-  padding: 0.7rem 1rem;
-  color: #06101f;
-  background: #7dd3fc;
-  font-weight: 700;
+  border: 1px solid #1d4ed8;
+  border-radius: 6px;
+  padding: 0.65rem 0.95rem;
+  color: #ffffff;
+  background: #1d4ed8;
+  font-weight: 650;
   cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: #1e40af;
+  border-color: #1e40af;
 }
 
 button:disabled {
@@ -40,25 +43,31 @@ button:disabled {
 }
 
 button.secondary {
-  color: #dbeafe;
-  background: #1e293b;
-  border: 1px solid #334155;
+  color: #334155;
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+button.secondary:hover:not(:disabled) {
+  color: #172033;
+  background: #f8fafc;
+  border-color: #94a3b8;
 }
 
 input {
   width: 100%;
   margin-top: 0.4rem;
-  border: 1px solid #334155;
-  border-radius: 0.6rem;
-  padding: 0.75rem;
-  color: #e8eef7;
-  background: #0f172a;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.7rem 0.75rem;
+  color: #172033;
+  background: #ffffff;
   outline: none;
 }
 
 input:focus {
-  border-color: #38bdf8;
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 code,
@@ -67,9 +76,9 @@ pre {
 }
 
 .shell {
-  width: min(100% - 2rem, 980px);
+  width: min(100% - 2rem, 1040px);
   margin: 0 auto;
-  padding: 2rem 0 4rem;
+  padding: 1.5rem 0 4rem;
 }
 
 .shell.centered {
@@ -78,21 +87,14 @@ pre {
   place-items: center;
 }
 
-.topbar,
-.section-heading,
-.status-row,
-.user-actions,
-.runbook-meta,
-.approval-actions {
+.topbar {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  flex-wrap: wrap;
-}
-
-.topbar {
   justify-content: space-between;
-  margin-bottom: 1.5rem;
+  gap: 1rem;
+  padding: 0 0 1.25rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid #d9e0e8;
 }
 
 h1,
@@ -102,75 +104,82 @@ p {
 }
 
 h1 {
-  margin-bottom: 0.35rem;
-  font-size: clamp(1.7rem, 4vw, 2.5rem);
+  margin-bottom: 0.25rem;
+  color: #111827;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  font-weight: 700;
 }
 
 h2 {
-  margin-bottom: 0.6rem;
-  font-size: 1.3rem;
+  margin-bottom: 0.55rem;
+  color: #111827;
+  font-size: 1.15rem;
+  font-weight: 700;
 }
 
 .eyebrow {
   margin-bottom: 0.35rem;
-  color: #7dd3fc;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .muted,
 .fine-print {
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .fine-print {
-  margin-top: 1.2rem;
+  margin-top: 1.1rem;
   margin-bottom: 0;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
 }
 
 .card {
   margin: 1rem 0;
-  padding: 1.3rem;
-  border: 1px solid #1e293b;
-  border-radius: 0.9rem;
-  background: rgba(15, 23, 42, 0.88);
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
+  padding: 1.2rem;
+  border: 1px solid #d9e0e8;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .auth-card {
-  width: min(100%, 460px);
+  width: min(100%, 440px);
 }
 
 .stack,
 .ask-form {
   display: grid;
-  gap: 1rem;
+  gap: 0.9rem;
 }
 
 label {
-  color: #cbd5e1;
-  font-size: 0.9rem;
-  font-weight: 600;
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 650;
 }
 
 .error,
 .success,
 .banner {
-  border-radius: 0.6rem;
-  padding: 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0.7rem 0.8rem;
 }
 
 .error {
-  color: #fecaca;
-  background: rgba(127, 29, 29, 0.35);
+  color: #991b1b;
+  background: #fef2f2;
+  border-color: #fecaca;
 }
 
 .success {
-  color: #bbf7d0;
-  background: rgba(20, 83, 45, 0.3);
+  color: #166534;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
 }
 
 .banner {
@@ -182,54 +191,74 @@ label {
 .status {
   display: inline-flex;
   align-items: center;
+  border: 1px solid #cbd5e1;
   border-radius: 999px;
-  padding: 0.3rem 0.65rem;
-  font-size: 0.75rem;
-  font-weight: 800;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 .role-badge,
 .provider-badge {
-  color: #bae6fd;
-  background: #0c4a6e;
+  color: #1e3a8a;
+  background: #eff6ff;
+  border-color: #bfdbfe;
 }
 
 .status-queued,
 .status-running {
-  color: #fde68a;
-  background: rgba(120, 53, 15, 0.45);
+  color: #92400e;
+  background: #fffbeb;
+  border-color: #fde68a;
 }
 
 .status-completed {
-  color: #bbf7d0;
-  background: rgba(20, 83, 45, 0.45);
+  color: #166534;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
 }
 
 .status-failed {
-  color: #fecaca;
-  background: rgba(127, 29, 29, 0.45);
+  color: #991b1b;
+  background: #fef2f2;
+  border-color: #fecaca;
 }
 
 .runbook-meta {
-  color: #94a3b8;
-  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  color: #64748b;
+  font-size: 0.8rem;
 }
 
 .runbook-content {
-  max-height: 560px;
+  max-height: 580px;
   overflow: auto;
   margin: 1rem 0;
   padding: 1rem;
-  border: 1px solid #1e293b;
-  border-radius: 0.6rem;
-  color: #dbeafe;
-  background: #020617;
-  font-size: 0.82rem;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #e2e8f0;
+  background: #0f172a;
+  font-size: 0.8rem;
   line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.approval-actions,
+.status-row,
+.user-actions,
+.section-heading,
+.runbook-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
 }
 
 .approval-actions {
@@ -243,9 +272,9 @@ label {
 
 .answer {
   margin-top: 1rem;
-  padding: 1rem;
-  border-left: 3px solid #38bdf8;
-  background: rgba(14, 116, 144, 0.15);
+  padding: 0.85rem 1rem;
+  border-left: 3px solid #2563eb;
+  background: #f8fafc;
 }
 
 .answer p:last-child {
@@ -257,7 +286,9 @@ label {
     grid-template-columns: 1fr;
   }
 
+  .topbar,
   .user-actions {
     align-items: flex-start;
+    flex-direction: column;
   }
 }
