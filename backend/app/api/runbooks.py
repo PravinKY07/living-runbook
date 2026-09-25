@@ -102,6 +102,11 @@ def ask_runbook(
             answer="I cannot provide credentials, secrets, or other sensitive values.",
             citations=[],
         )
+    if _is_action_request(payload.question):
+        return AnswerResponse(
+            answer="The application does not execute commands or perform automatic remediation.",
+            citations=[],
+        )
     draft = _get_runbook(request, runbook_id).draft
     question_terms = _question_terms(payload.question)
     lines = draft.content.splitlines()
@@ -148,6 +153,22 @@ def _is_sensitive_question(question: str) -> bool:
     return any(term in normalized for term in sensitive_terms)
 
 
+def _is_action_request(question: str) -> bool:
+    """Prevent Q&A from being used to request executable or remedial actions."""
+    normalized = question.lower()
+    action_terms = (
+        "restart",
+        "restarts",
+        "restarting",
+        "remediate",
+        "remediation",
+        "execute",
+        "run the",
+        "automatic deploy",
+    )
+    return any(term in normalized for term in action_terms)
+
+
 def _question_terms(question: str) -> set[str]:
     ignored = {
         "and",
@@ -171,13 +192,24 @@ def _question_terms(question: str) -> set[str]:
 
 
 def _focus_terms(question_terms: set[str]) -> set[str]:
-    """Return a narrow evidence filter for configuration questions."""
+    """Return a narrow evidence filter for configuration and dependency questions."""
+    if "framework" in question_terms:
+        return {"framework"}
+    if "commit" in question_terms:
+        return {"commit"}
+    if "files" in question_terms and "analyzed" in question_terms:
+        return {"files"}
     if {"database", "db"} & question_terms:
         return {"database", "db"}
     if "timeout" in question_terms:
         return {"timeout"}
     if "environment" in question_terms:
         return {"environment"}
+    if {"dependency", "dependencies"} & question_terms and {
+        "serve",
+        "runtime",
+    } & question_terms:
+        return {"runtime"}
     return set()
 
 
@@ -189,7 +221,11 @@ def _matching_section_lines(lines: list[str], question_terms: set[str]) -> list[
         "configuration": ("configuration", "config"),
         "endpoint": ("entry point", "entrypoints", "external call"),
         "entry": ("entry point", "entrypoints", "external call"),
+        "framework": ("service overview", "overview"),
         "health": ("entry point", "entrypoints", "external call"),
+        "provenance": ("provenance",),
+        "commit": ("provenance",),
+        "analyzed": ("provenance",),
     }
     wanted_heading: tuple[str, ...] | None = None
     for term in question_terms:

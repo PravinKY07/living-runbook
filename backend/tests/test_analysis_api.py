@@ -33,7 +33,10 @@ class FixtureLoader:
             "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/health')\ndef health():\n    return {'status': 'ok'}\n\n@app.get('/orders')\ndef orders():\n    try:\n        return {'status': 'ok'}\n    except Exception:\n        return {'status': 'degraded'}\n",
             encoding="utf-8",
         )
-        (self.root / "requirements.txt").write_text("fastapi>=0.100.0\n", encoding="utf-8")
+        (self.root / "requirements.txt").write_text(
+            "fastapi>=0.100.0\nuvicorn>=0.20.0\n",
+            encoding="utf-8",
+        )
         (self.root / "config.py").write_text(
             "import os\nDATABASE_URL = os.getenv('DATABASE_URL')\nREQUEST_TIMEOUT = os.getenv('REQUEST_TIMEOUT')\nFEATURE_FLAG = True\n",
             encoding="utf-8",
@@ -182,9 +185,25 @@ def test_qa_topics_are_focused_and_safe(tmp_path):
     assert "Route handler" in entry_answer
     assert "Failure modes" not in entry_answer
 
+    framework_answer = ask("What framework does the service use?")
+    assert "Framework: fastapi" in framework_answer
+    assert "Review database" not in framework_answer
+
+    file_count_answer = ask("How many files were analyzed?")
+    assert "Files analyzed" in file_count_answer
+    assert "Repository code was not executed" not in file_count_answer
+
+    commit_answer = ask("What commit was analyzed?")
+    assert "Commit:" in commit_answer
+    assert "Files analyzed" not in commit_answer
+
     dependency_answer = ask("What dependencies are used?")
     assert "fastapi" in dependency_answer
     assert "Failure modes" not in dependency_answer
+
+    serving_dependency_answer = ask("Which dependency is used to serve the application?")
+    assert "uvicorn" in serving_dependency_answer
+    assert "python:3.12-slim" not in serving_dependency_answer
 
     failure_answer = ask("What failure modes were detected?")
     assert "Exception-handling path detected" in failure_answer
@@ -196,6 +215,9 @@ def test_qa_topics_are_focused_and_safe(tmp_path):
 
     secret_answer = ask("What is the production database password?")
     assert secret_answer == "I cannot provide credentials, secrets, or other sensitive values."
+
+    action_answer = ask("Does the runbook recommend restarting the service?")
+    assert action_answer == "The application does not execute commands or perform automatic remediation."
 
     unknown_answer = ask("What is the capital of France?")
     assert "does not contain enough evidence" in unknown_answer
