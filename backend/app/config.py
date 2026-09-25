@@ -1,10 +1,11 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+BACKEND_ROOT = PROJECT_ROOT / "backend"
 LOCAL_ENV_FILE = PROJECT_ROOT / ".env"
 
 
@@ -28,6 +29,15 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @field_validator("database_path")
+    @classmethod
+    def resolve_database_path(cls, value: str) -> str:
+        """Resolve relative local paths from the backend, not the shell cwd."""
+        path = Path(value)
+        if path.is_absolute():
+            return str(path)
+        return str((BACKEND_ROOT / path).resolve())
 
     @property
     def session_configured(self) -> bool:
