@@ -100,17 +100,28 @@ def ask_runbook(
     draft = _get_runbook(request, runbook_id).draft
     question_terms = _question_terms(payload.question)
     lines = draft.content.splitlines()
-    section_lines = _matching_section_lines(lines, question_terms)
-    candidate_lines = section_lines or [
-        (line_number, line)
-        for line_number, line in enumerate(lines, start=1)
-        if any(term in line.lower() for term in question_terms)
-    ]
-    matches = [
-        (line_number, cleaned)
-        for line_number, line in candidate_lines
-        if (cleaned := _clean_runbook_line(line))
-    ][:5]
+    focus_terms = _focus_terms(question_terms)
+    if focus_terms:
+        candidate_lines = [
+            (line_number, line)
+            for line_number, line in enumerate(lines, start=1)
+            if any(term in line.lower() for term in focus_terms)
+        ]
+    else:
+        section_lines = _matching_section_lines(lines, question_terms)
+        candidate_lines = section_lines or [
+            (line_number, line)
+            for line_number, line in enumerate(lines, start=1)
+            if any(term in line.lower() for term in question_terms)
+        ]
+    matches: list[tuple[int, str]] = []
+    seen_text: set[str] = set()
+    for line_number, line in candidate_lines:
+        cleaned = _clean_runbook_line(line)
+        if cleaned and cleaned not in seen_text:
+            seen_text.add(cleaned)
+            matches.append((line_number, cleaned))
+    matches = matches[:5]
 
     if not matches:
         return AnswerResponse(
@@ -145,6 +156,17 @@ def _question_terms(question: str) -> set[str]:
         for term in re.findall(r"[a-z0-9_]+", question.lower())
         if len(term) > 2 and term not in ignored
     }
+
+
+def _focus_terms(question_terms: set[str]) -> set[str]:
+    """Return a narrow evidence filter for configuration questions."""
+    if {"database", "db"} & question_terms:
+        return {"database", "db"}
+    if "timeout" in question_terms:
+        return {"timeout"}
+    if "environment" in question_terms:
+        return {"environment"}
+    return set()
 
 
 def _matching_section_lines(lines: list[str], question_terms: set[str]) -> list[tuple[int, str]]:

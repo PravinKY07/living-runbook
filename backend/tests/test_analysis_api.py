@@ -34,6 +34,10 @@ class FixtureLoader:
             encoding="utf-8",
         )
         (self.root / "requirements.txt").write_text("fastapi>=0.100.0\n", encoding="utf-8")
+        (self.root / "config.py").write_text(
+            "import os\nDATABASE_URL = os.getenv('DATABASE_URL')\nREQUEST_TIMEOUT = os.getenv('REQUEST_TIMEOUT')\nFEATURE_FLAG = True\n",
+            encoding="utf-8",
+        )
         return FixtureContext(
             LoadedRepository(
                 repository=validate_github_repository_url(url),
@@ -124,6 +128,15 @@ def test_full_analysis_runbook_approval_flow(tmp_path):
     assert "No external calls" not in answer.json()["answer"]
     assert "Confirm the cited file" not in answer.json()["answer"]
     assert "Exception-handling path detected" in answer.json()["answer"]
+
+    database_answer = client.post(
+        f"/api/runbooks/{runbook_id}/ask",
+        json={"question": "What happens when the database configuration is missing?"},
+    )
+    assert database_answer.status_code == 200
+    assert "DATABASE_URL" in database_answer.json()["answer"]
+    assert "REQUEST_TIMEOUT" not in database_answer.json()["answer"]
+    assert "FEATURE_FLAG" not in database_answer.json()["answer"]
 
     assert client.post(f"/api/runbooks/{runbook_id}/approve").status_code == 403
     client.post("/api/auth/logout")
