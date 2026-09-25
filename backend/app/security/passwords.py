@@ -7,7 +7,11 @@ or logged.
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
 
-_hasher = PasswordHasher()
+_hasher = PasswordHasher(
+    time_cost=3,
+    memory_cost=65536,
+    parallelism=4,
+)
 
 
 def hash_password(password: str) -> str:

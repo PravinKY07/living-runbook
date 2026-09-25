@@ -60,6 +60,27 @@ def test_me_returns_authenticated_user(tmp_path):
     assert response.json()["email"] == "editor@example.test"
 
 
+def test_unauthenticated_me_returns_401(tmp_path):
+    client = make_client(tmp_path)
+
+    response = client.get("/api/auth/me")
+
+    assert response.status_code == 401
+
+
+def test_session_cookie_is_secure_by_default():
+    assert Settings.model_fields["session_https_only"].default is True
+
+
+def test_email_login_is_case_insensitive(tmp_path):
+    client = make_client(tmp_path)
+
+    response = login(client, "EDITOR@EXAMPLE.TEST", "editor-test-password")
+
+    assert response.status_code == 200
+    assert response.json()["email"] == "editor@example.test"
+
+
 def test_wrong_password_is_rejected(tmp_path):
     client = make_client(tmp_path)
 

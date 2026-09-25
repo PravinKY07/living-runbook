@@ -1,11 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True, slots=True)
 class UserRecord:
-    """A user record safe to return to the application layer."""
+    """A user record used inside the backend only."""
 
     id: int
     email: str
     role: str
-    password_hash: str
+    password_hash: str = field(repr=False)
