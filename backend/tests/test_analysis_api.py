@@ -159,3 +159,43 @@ def test_analysis_requires_authentication(tmp_path):
     )
 
     assert response.status_code == 401
+
+
+def test_qa_topics_are_focused_and_safe(tmp_path):
+    client = make_client(tmp_path)
+    login(client, "editor@example.test", "editor-test-password")
+    submitted = client.post(
+        "/api/repositories/analyze",
+        json={"repository_url": "https://github.com/example/project"},
+    )
+    job = client.get(f"/api/jobs/{submitted.json()['id']}").json()
+    assert job["status"] == "completed"
+    runbook_id = job["runbook_id"]
+
+    def ask(question):
+        return client.post(
+            f"/api/runbooks/{runbook_id}/ask",
+            json={"question": question},
+        ).json()["answer"]
+
+    entry_answer = ask("What entry points are documented?")
+    assert "Route handler" in entry_answer
+    assert "Failure modes" not in entry_answer
+
+    dependency_answer = ask("What dependencies are used?")
+    assert "fastapi" in dependency_answer
+    assert "Failure modes" not in dependency_answer
+
+    failure_answer = ask("What failure modes were detected?")
+    assert "Exception-handling path detected" in failure_answer
+    assert "Diagnostic guidance" not in failure_answer
+
+    database_answer = ask("What happens when the database configuration is missing?")
+    assert "DATABASE_URL" in database_answer
+    assert "REQUEST_TIMEOUT" not in database_answer
+
+    secret_answer = ask("What is the production database password?")
+    assert secret_answer == "I cannot provide credentials, secrets, or other sensitive values."
+
+    unknown_answer = ask("What is the capital of France?")
+    assert "does not contain enough evidence" in unknown_answer

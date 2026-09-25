@@ -97,6 +97,11 @@ def ask_runbook(
     _user: CurrentUser,
 ) -> AnswerResponse:
     """Answer a question from focused sections of the stored runbook only."""
+    if _is_sensitive_question(payload.question):
+        return AnswerResponse(
+            answer="I cannot provide credentials, secrets, or other sensitive values.",
+            citations=[],
+        )
     draft = _get_runbook(request, runbook_id).draft
     question_terms = _question_terms(payload.question)
     lines = draft.content.splitlines()
@@ -134,6 +139,13 @@ def ask_runbook(
         answer="Relevant evidence from the current runbook:\n" + "\n".join(answer_lines),
         citations=[f"runbook:{line_number}" for line_number, _ in matches],
     )
+
+
+def _is_sensitive_question(question: str) -> bool:
+    """Prevent Q&A from being used to request credentials or secrets."""
+    normalized = question.lower()
+    sensitive_terms = ("password", "passwd", "secret", "token", "api key", "apikey", "credential")
+    return any(term in normalized for term in sensitive_terms)
 
 
 def _question_terms(question: str) -> set[str]:
