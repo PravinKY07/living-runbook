@@ -123,6 +123,7 @@ class WatsonxProvider:
             "WATSONX_PROJECT_ID": self._settings.watsonx_project_id,
             "WATSONX_URL": self._settings.watsonx_url,
             "CODE_ANALYSIS_MODEL": self._settings.code_analysis_model,
+            "WRITER_MODEL": self._settings.writer_model,
         }
         missing = [name for name, value in required.items() if not value.strip()]
         if missing:

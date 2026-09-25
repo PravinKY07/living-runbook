@@ -119,6 +119,7 @@ def test_approver_can_access_approver_route(tmp_path):
 
 def test_auth_is_unavailable_without_session_secret(tmp_path):
     settings = Settings(
+        _env_file=None,
         database_path=str(tmp_path / "auth.db"),
     )
     store = SQLiteUserStore(settings.database_path)

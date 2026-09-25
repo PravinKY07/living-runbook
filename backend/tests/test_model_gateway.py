@@ -52,7 +52,7 @@ def test_gateway_enforces_token_limit():
 
 
 def test_watsonx_preflight_reports_missing_settings_without_values():
-    provider = WatsonxProvider(Settings())
+    provider = WatsonxProvider(Settings(_env_file=None))
 
     result = provider.preflight()
 
@@ -60,6 +60,7 @@ def test_watsonx_preflight_reports_missing_settings_without_values():
     assert result.ready is False
     assert "WATSONX_APIKEY" in result.missing_settings
     assert "WATSONX_PROJECT_ID" in result.missing_settings
+    assert "WRITER_MODEL" in result.missing_settings
     assert "WATSONX_APIKEY" not in result.message
 
 
@@ -69,6 +70,7 @@ def test_watsonx_preflight_does_not_enable_network_inference():
         watsonx_project_id="test-project",
         watsonx_url="https://example.invalid",
         code_analysis_model="test-model",
+        writer_model="test-writer-model",
     )
     provider = WatsonxProvider(settings)
 
