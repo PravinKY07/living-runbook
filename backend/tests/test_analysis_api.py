@@ -188,6 +188,7 @@ def test_qa_topics_are_focused_and_safe(tmp_path):
     orders_answer = ask("Where are the orders handled?")
     assert "orders" in orders_answer
     assert "def orders" not in orders_answer
+    assert "health" not in orders_answer
 
     framework_answer = ask("What framework does the service use?")
     assert "Framework: fastapi" in framework_answer
@@ -211,6 +212,11 @@ def test_qa_topics_are_focused_and_safe(tmp_path):
     serving_dependency_answer = ask("Which dependency is used to serve the application?")
     assert "uvicorn" in serving_dependency_answer
     assert "python:3.12-slim" not in serving_dependency_answer
+    assert "Static analysis cannot prove" not in serving_dependency_answer
+
+    timeout_answer = ask("What happens if the API times out?")
+    assert "timeout" in timeout_answer.lower()
+    assert "Name: Fixture Orders API" not in timeout_answer
 
     failure_answer = ask("What failure modes were detected?")
     assert "Exception-handling path detected" in failure_answer
@@ -225,6 +231,9 @@ def test_qa_topics_are_focused_and_safe(tmp_path):
 
     action_answer = ask("Does the runbook recommend restarting the service?")
     assert action_answer == "The application does not execute commands or perform automatic remediation."
+
+    deploy_answer = ask("Can you deploy this service for me?")
+    assert deploy_answer == "The application does not execute commands or perform automatic remediation."
 
     unknown_answer = ask("What is the capital of France?")
     assert "does not contain enough evidence" in unknown_answer

@@ -122,6 +122,13 @@ def ask_runbook(
         ]
     else:
         section_lines = _matching_section_lines(lines, question_terms)
+        if section_lines and any(term.startswith("order") for term in question_terms):
+            order_lines = [
+                (line_number, line)
+                for line_number, line in section_lines
+                if "order" in line.lower()
+            ]
+            section_lines = order_lines or section_lines
         candidate_lines = section_lines or [
             (line_number, line)
             for line_number, line in enumerate(lines, start=1)
@@ -167,6 +174,9 @@ def _is_action_request(question: str) -> bool:
         "remediation",
         "execute",
         "run the",
+        "deploy this",
+        "deploy the",
+        "deploy it",
         "automatic deploy",
     )
     return any(term in normalized for term in action_terms)
@@ -187,11 +197,14 @@ def _question_terms(question: str) -> set[str]:
         "which",
         "with",
     }
-    return {
+    terms = {
         term
         for term in re.findall(r"[a-z0-9_]+", question.lower())
         if len(term) > 2 and term not in ignored
     }
+    if {"times", "timed", "timing"} & terms and "out" in terms:
+        terms.add("timeout")
+    return terms
 
 
 def _status_answer(question: str, status: str) -> AnswerResponse | None:
@@ -279,7 +292,9 @@ def _clean_runbook_line(line: str) -> str | None:
         text = text[: location_match.start()].strip()
     text = text.replace("**", "").replace("`", "")
     text = re.sub(r"\s+", " ", text).strip()
-    if not text or text.lower().startswith("no "):
+    if not text or text.lower().startswith(
+        ("no ", "static analysis cannot prove", "this draft requires")
+    ):
         return None
     return f"{text}{location}"
 
