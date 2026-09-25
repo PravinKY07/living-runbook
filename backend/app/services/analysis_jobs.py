@@ -1,0 +1,96 @@
+"""Single in-process analysis job worker."""
+
+from __future__ import annotations
+
+import sqlite3
+from concurrent.futures import Executor, Future, ThreadPoolExecutor
+from threading import RLock
+
+from app.models.jobs import AnalysisJob
+from app.security.evidence import EvidenceValidationError
+from app.security.url_policy import validate_github_repository_url
+from app.services.analysis_service import analyze_manifest
+from app.services.job_store import SQLiteJobStore
+from app.services.repository_loader import (
+    RepositoryCleanupError,
+    RepositoryLoader,
+    RepositoryLoadError,
+)
+from app.services.runbook_store import RunbookApprovalError, SQLiteRunbookStore
+from app.services.runbook_writer import RunbookWriter
+
+
+class AnalysisJobManager:
+    """Submit repository analysis without blocking the web request."""
+
+    def __init__(
+        self,
+        *,
+        job_store: SQLiteJobStore,
+        runbook_store: SQLiteRunbookStore,
+        loader: RepositoryLoader | None = None,
+        writer: RunbookWriter | None = None,
+        executor: Executor | None = None,
+    ) -> None:
+        self._job_store = job_store
+        self._runbook_store = runbook_store
+        self._loader = loader or RepositoryLoader()
+        self._writer = writer or RunbookWriter()
+        self._executor = executor or ThreadPoolExecutor(
+            max_workers=1,
+            thread_name_prefix="living-runbook-analysis",
+        )
+        self._futures: dict[str, Future[None]] = {}
+        self._lock = RLock()
+
+    def submit(self, repository_url: str) -> AnalysisJob:
+        """Validate the URL, persist a queued job, and start processing."""
+        repository = validate_github_repository_url(repository_url)
+        job = self._job_store.create(repository.normalized_url)
+        future = self._executor.submit(self._run, job.id, repository.normalized_url)
+        with self._lock:
+            self._futures[job.id] = future
+        return job
+
+    def wait(self, job_id: str, timeout: float | None = None) -> None:
+        """Wait for a job in tests or controlled shutdown paths."""
+        with self._lock:
+            future = self._futures.get(job_id)
+        if future is not None:
+            future.result(timeout=timeout)
+
+    def get(self, job_id: str) -> AnalysisJob:
+        """Return current job status."""
+        return self._job_store.get(job_id)
+
+    def _run(self, job_id: str, repository_url: str) -> None:
+        self._job_store.update(job_id, status="running")
+        try:
+            with self._loader.load(repository_url) as loaded:
+                analysis = analyze_manifest(
+                    loaded.manifest,
+                    repository_url=loaded.repository.normalized_url,
+                )
+                draft = self._writer.write(analysis)
+                stored = self._runbook_store.create_draft(draft)
+            self._job_store.update(
+                job_id,
+                status="completed",
+                runbook_id=stored.runbook_id,
+            )
+        except (
+            EvidenceValidationError,
+            RepositoryCleanupError,
+            RepositoryLoadError,
+            RunbookApprovalError,
+            KeyError,
+            OSError,
+            TypeError,
+            ValueError,
+            sqlite3.Error,
+        ):
+            self._job_store.update(
+                job_id,
+                status="failed",
+                error_message="Repository analysis failed safely.",
+            )

@@ -1,0 +1,144 @@
+from concurrent.futures import Future
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from app.config import Settings
+from app.main import create_app
+from app.security.url_policy import validate_github_repository_url
+from app.services.analysis_jobs import AnalysisJobManager
+from app.services.demo_seed import seed_demo_users
+from app.services.job_store import SQLiteJobStore
+from app.services.repository_loader import LoadedRepository
+from app.services.runbook_store import SQLiteRunbookStore
+from app.services.safe_manifest import build_safe_manifest
+from app.services.user_store import SQLiteUserStore
+
+
+class InlineExecutor:
+    """Test executor that runs work immediately."""
+
+    def submit(self, function, *args, **kwargs):
+        future = Future()
+        future.set_result(function(*args, **kwargs))
+        return future
+
+
+class FixtureLoader:
+    def __init__(self, root: Path) -> None:
+        self.root = root
+
+    def load(self, url: str):
+        (self.root / "app.py").write_text(
+            "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/health')\ndef health():\n    return {'status': 'ok'}\n",
+            encoding="utf-8",
+        )
+        (self.root / "requirements.txt").write_text("fastapi>=0.100.0\n", encoding="utf-8")
+        return FixtureContext(
+            LoadedRepository(
+                repository=validate_github_repository_url(url),
+                root=self.root,
+                manifest=build_safe_manifest(self.root, repository_commit="abc1234"),
+            )
+        )
+
+
+class FixtureContext:
+    def __init__(self, loaded: LoadedRepository) -> None:
+        self.loaded = loaded
+
+    def __enter__(self):
+        return self.loaded
+
+    def __exit__(self, *args):
+        return None
+
+
+def make_client(tmp_path: Path) -> TestClient:
+    database_path = str(tmp_path / "app.db")
+    settings = Settings(
+        _env_file=None,
+        database_path=database_path,
+        session_secret="test-session-secret-that-is-long-enough",
+        session_https_only=False,
+    )
+    user_store = SQLiteUserStore(database_path)
+    seed_demo_users(
+        user_store,
+        editor_email="editor@example.test",
+        editor_password="editor-test-password",
+        approver_email="approver@example.test",
+        approver_password="approver-test-password",
+    )
+    runbook_store = SQLiteRunbookStore(database_path)
+    job_manager = AnalysisJobManager(
+        job_store=SQLiteJobStore(database_path),
+        runbook_store=runbook_store,
+        loader=FixtureLoader(tmp_path / "fixture"),
+        executor=InlineExecutor(),
+    )
+    (tmp_path / "fixture").mkdir(exist_ok=True)
+    return TestClient(
+        create_app(
+            settings=settings,
+            user_store=user_store,
+            runbook_store=runbook_store,
+            job_manager=job_manager,
+        )
+    )
+
+
+def login(client: TestClient, email: str, password: str):
+    return client.post("/api/auth/login", json={"email": email, "password": password})
+
+
+def test_full_analysis_runbook_approval_flow(tmp_path):
+    client = make_client(tmp_path)
+    login(client, "editor@example.test", "editor-test-password")
+
+    submitted = client.post(
+        "/api/repositories/analyze",
+        json={"repository_url": "https://github.com/example/project"},
+    )
+    assert submitted.status_code == 202
+    job_id = submitted.json()["id"]
+
+    job = client.get(f"/api/jobs/{job_id}")
+    assert job.status_code == 200
+    assert job.json()["status"] == "completed"
+    runbook_id = job.json()["runbook_id"]
+
+    runbook = client.get(f"/api/runbooks/{runbook_id}")
+    assert runbook.status_code == 200
+    assert runbook.json()["metadata"]["provider"] == "static"
+    assert "Entry points" in runbook.json()["content"]
+
+    answer = client.post(
+        f"/api/runbooks/{runbook_id}/ask",
+        json={"question": "What is the health endpoint?"},
+    )
+    assert answer.status_code == 200
+    assert answer.json()["provider"] == "static"
+    assert answer.json()["citations"]
+
+    assert client.post(f"/api/runbooks/{runbook_id}/approve").status_code == 403
+    client.post("/api/auth/logout")
+    login(client, "approver@example.test", "approver-test-password")
+    approved = client.post(f"/api/runbooks/{runbook_id}/approve")
+    assert approved.status_code == 200
+    assert approved.json()["metadata"]["status"] == "approved"
+
+    published = client.post(f"/api/runbooks/{runbook_id}/publish")
+    assert published.status_code == 200
+    assert published.json()["metadata"]["status"] == "published"
+
+
+def test_analysis_requires_authentication(tmp_path):
+    client = make_client(tmp_path)
+
+    response = client.post(
+        "/api/repositories/analyze",
+        json={"repository_url": "https://github.com/example/project"},
+    )
+
+    assert response.status_code == 401
