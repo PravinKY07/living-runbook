@@ -110,7 +110,7 @@ The action begins with `workflow_dispatch`. It analyzes changes through the host
 
 ## Current implementation status
 
-This checkout currently contains the project documentation, environment template, GitHub workflow directory, and backend environment directory. The application source and frontend implementation should be added and tested during the hackathon build. Reviewers should use the README and demo documentation for the latest runnable commands and status.
+The MVP backend and frontend are implemented locally. The current checkout includes the FastAPI backend, static analyzers, runbook generation and approval services, audit endpoint, React/Vite frontend, deployment documentation, and a manually triggered GitHub Action. See the README and deployment guide for current runnable commands and verification steps.
 
 No credentials, API keys, passwords, private repository data, or `.env` values belong in this document or the public repository.
 

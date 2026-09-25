@@ -1,0 +1,113 @@
+name: Propose living runbook update
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository_url:
+        description: "Public GitHub repository URL to analyze"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  propose-runbook:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out runbook source
+        uses: actions/checkout@v4
+
+      - name: Require deployment configuration
+        env:
+          RUNBOOK_API_URL: ${{ vars.RUNBOOK_API_URL }}
+          RUNBOOK_DEMO_EMAIL: ${{ secrets.RUNBOOK_DEMO_EMAIL }}
+          RUNBOOK_DEMO_PASSWORD: ${{ secrets.RUNBOOK_DEMO_PASSWORD }}
+        run: |
+          set -eu
+          if [ -z "$RUNBOOK_API_URL" ] || [ -z "$RUNBOOK_DEMO_EMAIL" ] || [ -z "$RUNBOOK_DEMO_PASSWORD" ]; then
+            echo "RUNBOOK_API_URL, RUNBOOK_DEMO_EMAIL, and RUNBOOK_DEMO_PASSWORD must be configured."
+            exit 1
+          fi
+
+      - name: Request runbook from hosted analysis API
+        id: analysis
+        env:
+          RUNBOOK_API_URL: ${{ vars.RUNBOOK_API_URL }}
+          RUNBOOK_DEMO_EMAIL: ${{ secrets.RUNBOOK_DEMO_EMAIL }}
+          RUNBOOK_DEMO_PASSWORD: ${{ secrets.RUNBOOK_DEMO_PASSWORD }}
+          TARGET_REPOSITORY: ${{ inputs.repository_url || format('https://github.com/{0}', github.repository) }}
+        run: |
+          set -eu
+          cookie_jar="$(mktemp)"
+          login_body="$(jq -n --arg email "$RUNBOOK_DEMO_EMAIL" --arg password "$RUNBOOK_DEMO_PASSWORD" '{email: $email, password: $password}')"
+          trap 'rm -f "$cookie_jar"' EXIT
+
+          printf '%s' "$login_body" | curl --fail --silent --show-error \
+            --cookie-jar "$cookie_jar" \
+            --header 'Content-Type: application/json' \
+            --data-binary @- \
+            "$RUNBOOK_API_URL/api/auth/login" >/dev/null
+
+          submit_body="$(jq -n --arg repository_url "$TARGET_REPOSITORY" '{repository_url: $repository_url}')"
+          job_json="$(printf '%s' "$submit_body" | curl --fail --silent --show-error \
+            --cookie "$cookie_jar" \
+            --header 'Content-Type: application/json' \
+            --data-binary @- \
+            "$RUNBOOK_API_URL/api/repositories/analyze")"
+          job_id="$(printf '%s' "$job_json" | jq -r '.id')"
+
+          for attempt in $(seq 1 120); do
+            job_json="$(curl --fail --silent --show-error \
+              --cookie "$cookie_jar" \
+              "$RUNBOOK_API_URL/api/jobs/$job_id")"
+            job_status="$(printf '%s' "$job_json" | jq -r '.status')"
+            if [ "$job_status" = "completed" ]; then
+              break
+            fi
+            if [ "$job_status" = "failed" ]; then
+              echo "Analysis job failed safely."
+              exit 1
+            fi
+            sleep 5
+          done
+
+          if [ "${job_status:-}" != "completed" ]; then
+            echo "Analysis job did not complete within the workflow timeout."
+            exit 1
+          fi
+
+          runbook_id="$(printf '%s' "$job_json" | jq -r '.runbook_id')"
+          runbook_json="$(curl --fail --silent --show-error \
+            --cookie "$cookie_jar" \
+            "$RUNBOOK_API_URL/api/runbooks/$runbook_id")"
+          printf '%s' "$runbook_json" | jq -r '.content' > docs/generated-runbook.md
+          printf '%s' "$runbook_json" | jq -r '.metadata.content_hash' > /tmp/runbook-content-hash.txt
+          printf 'runbook_id=%s\ncontent_hash=%s\n' "$runbook_id" "$(cat /tmp/runbook-content-hash.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Create proposed runbook pull request
+        env:
+          TARGET_REPOSITORY: ${{ inputs.repository_url || format('https://github.com/{0}', github.repository) }}
+        run: |
+          set -eu
+          git add --intent-to-add -- docs/generated-runbook.md
+          if git diff --quiet -- docs/generated-runbook.md; then
+            echo "Generated runbook is unchanged; no pull request needed."
+            exit 0
+          fi
+
+          branch="runbook-proposed/${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add -- docs/generated-runbook.md
+          git commit -m "docs: propose living runbook update"
+          git push --force-with-lease origin "$branch"
+
+          gh pr create \
+            --base "${GITHUB_REF_NAME}" \
+            --head "$branch" \
+            --title "docs: propose living runbook update" \
+            --body "Automated static analysis proposed a runbook update for ${TARGET_REPOSITORY}. Review the evidence and approve before publishing. This workflow does not publish directly."

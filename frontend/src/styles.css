@@ -54,7 +54,8 @@ button.secondary:hover:not(:disabled) {
   border-color: #94a3b8;
 }
 
-input {
+input,
+select {
   width: 100%;
   margin-top: 0.4rem;
   border: 1px solid #cbd5e1;
@@ -65,7 +66,8 @@ input {
   outline: none;
 }
 
-input:focus {
+input:focus,
+select:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
@@ -246,6 +248,21 @@ label {
   background: #0f172a;
   font-size: 0.8rem;
   line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.version-diff {
+  max-height: 420px;
+  overflow: auto;
+  margin: 1rem 0 0;
+  padding: 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #334155;
+  background: #f8fafc;
+  font-size: 0.8rem;
+  line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

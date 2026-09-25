@@ -42,6 +42,7 @@ export const api = {
     }),
   getJob: (jobId) => request(`/api/jobs/${jobId}`),
   getRunbook: (runbookId) => request(`/api/runbooks/${runbookId}`),
+  getRunbookVersions: (runbookId) => request(`/api/runbooks/${runbookId}/versions`),
   ask: (runbookId, question) =>
     request(`/api/runbooks/${runbookId}/ask`, {
       method: "POST",

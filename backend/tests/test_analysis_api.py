@@ -120,6 +120,11 @@ def test_full_analysis_runbook_approval_flow(tmp_path):
     assert runbook.json()["metadata"]["provider"] == "static"
     assert "Entry points" in runbook.json()["content"]
 
+    versions = client.get(f"/api/runbooks/{runbook_id}/versions")
+    assert versions.status_code == 200
+    assert len(versions.json()) >= 1
+    assert versions.json()[0]["metadata"]["version"] >= 1
+
     answer = client.post(
         f"/api/runbooks/{runbook_id}/ask",
         json={"question": "What failure modes were detected?"},

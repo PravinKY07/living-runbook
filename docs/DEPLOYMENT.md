@@ -79,6 +79,21 @@ VITE_API_BASE_URL=https://your-backend.example.com
 
 The frontend must not receive `SESSION_SECRET`, `DATABASE_PATH`, or `CORS_ORIGINS`.
 
+For the manually triggered living-runbook workflow, configure the repository variable:
+
+```text
+RUNBOOK_API_URL=https://your-backend.example.com
+```
+
+Configure these as protected GitHub Actions secrets:
+
+```text
+RUNBOOK_DEMO_EMAIL
+RUNBOOK_DEMO_PASSWORD
+```
+
+The workflow only proposes a pull request. It does not publish directly.
+
 Deploy the frontend and verify the login flow in a clean browser session.
 
 ## 3. Live verification

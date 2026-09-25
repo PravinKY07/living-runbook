@@ -8,6 +8,26 @@ function wait(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
+function buildLineDiff(previousContent, currentContent) {
+  const previousLines = previousContent.split("\n");
+  const currentLines = currentContent.split("\n");
+  const diff = [];
+  const lineCount = Math.max(previousLines.length, currentLines.length);
+
+  for (let index = 0; index < lineCount; index += 1) {
+    const previousLine = previousLines[index] ?? "";
+    const currentLine = currentLines[index] ?? "";
+    if (previousLine === currentLine) {
+      diff.push(`  ${currentLine}`);
+    } else {
+      if (previousLine) diff.push(`- ${previousLine}`);
+      if (currentLine) diff.push(`+ ${currentLine}`);
+    }
+  }
+
+  return diff.join("\n");
+}
+
 async function waitForJob(jobId, onUpdate) {
   for (let attempt = 0; attempt < 120; attempt += 1) {
     const job = await api.getJob(jobId);
@@ -166,6 +186,22 @@ function RunbookView({ runbook, runbookId, user, onRunbook, onError }) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [versions, setVersions] = useState([]);
+  const [selectedVersion, setSelectedVersion] = useState("");
+
+  useEffect(() => {
+    if (!runbookId || !runbook) {
+      return undefined;
+    }
+    api
+      .getRunbookVersions(runbookId)
+      .then((storedVersions) => {
+        setVersions(storedVersions);
+        setSelectedVersion(String(runbook.metadata.version));
+      })
+      .catch((versionsError) => onError(versionsError.message));
+    return undefined;
+  }, [runbookId, runbook?.metadata.version]);
 
   async function handleAsk(event) {
     event.preventDefault();
@@ -198,6 +234,13 @@ function RunbookView({ runbook, runbookId, user, onRunbook, onError }) {
 
   const metadata = runbook.metadata;
   const canApprove = user.role === "approver";
+  const selectedDraft = versions.find(
+    (version) => String(version.metadata.version) === selectedVersion,
+  );
+  const diffContent =
+    selectedDraft && selectedDraft.metadata.version !== metadata.version
+      ? buildLineDiff(selectedDraft.content, runbook.content)
+      : "";
 
   return (
     <>
@@ -238,6 +281,36 @@ function RunbookView({ runbook, runbookId, user, onRunbook, onError }) {
             <p className="muted">An Approver must review and publish this runbook.</p>
           )}
         </div>
+      </section>
+
+      <section className="card">
+        <p className="eyebrow">Version history</p>
+        <h2>Compare runbook versions</h2>
+        {versions.length <= 1 ? (
+          <p className="muted">Only the current version is available.</p>
+        ) : (
+          <>
+            <label>
+              Version
+              <select
+                value={selectedVersion}
+                onChange={(event) => setSelectedVersion(event.target.value)}
+              >
+                {versions.map((version) => (
+                  <option key={version.metadata.version} value={version.metadata.version}>
+                    Version {version.metadata.version} ({version.metadata.status})
+                  </option>
+                ))}
+              </select>
+            </label>
+            {diffContent && (
+              <>
+                <p className="muted">Changes from the selected version to the current version:</p>
+                <pre className="version-diff">{diffContent}</pre>
+              </>
+            )}
+          </>
+        )}
       </section>
 
       <section className="card">
