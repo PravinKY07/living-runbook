@@ -68,6 +68,8 @@ These are the security behaviors, and they are the most interesting part of the 
 
 The last row is worth calling out. The approve and publish controls are not *displayed* to an Editor, but the server independently rejects the request on its own. The interface is a convenience; the backend is the control.
 
+**A note on the Q&A refusals:** they are keyword guards matched against the question text, not semantic understanding. The phrasings in the table are the ones that trigger them; a rephrased question may instead be answered from the runbook. That is not a leak — the stored runbook contains no secret values, and the redaction pass runs before anything is written — but it is worth knowing when probing the boundary.
+
 ---
 
 ## How it works
@@ -113,13 +115,13 @@ Treat every runbook as a **reviewed draft**, never as authoritative documentatio
 
 Generating documentation from a repository automatically is an established idea, and this project is not the first to do it. The contribution here is the verification, safety, and accountability layer built around generation:
 
-- **Citations are checked, not merely written.** Every file and line reference is validated against the analyzed repository, and the quoted excerpt must match the actual source line. A fabricated citation cannot survive into the output.
+- **Citations are checked, not merely written.** Every file and line reference is validated against the analyzed repository, and the quoted excerpt must correspond to the actual source line at that position. A fabricated citation cannot survive into the output.
 - **The repository is data, never a program.** Analysis operates on an allowlisted, redacted copy in a disposable workspace, with the clone hardened to disable symlinks, submodules, and alternate git protocols.
 - **No third-party model calls.** Analysis runs on local deterministic providers, so no analyzed source code is transmitted anywhere.
 - **The provider label is a type constraint, not a convention.** The stored model restricts the provider field to `static` or `mock`, so output cannot be recorded as coming from something it did not come from.
 - **Uncertainty is reported rather than hidden.**
 - **Approval is enforced on the server.** The interface hides controls the current role cannot use, and the backend independently rejects the request.
-- **Automation is least-privilege by design.** The GitHub Action authenticates with an Editor account, so it structurally cannot publish a runbook.
+- **Automation proposes, it never publishes.** The GitHub Action contains no publish or approval call at all; it opens a pull request and never merges. It is *configured* to authenticate with the Editor account, which the backend refuses to publish with. Publishing would therefore require a deliberate change to the workflow **and** privileged credentials to replace it — neither is a property the code enforces on its own.
 
 ## Approval is a human decision
 
