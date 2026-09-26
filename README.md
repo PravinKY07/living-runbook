@@ -51,7 +51,7 @@ These accounts are **shared** — everyone using this demo uses the same account
 3. **Check the evidence.** Findings should cite `file:line`. Open the fixture repository and spot-check two or three citations against the real source.
 4. **Ask a question**, for example *"What entry points are documented?"* or *"Which failure modes are recorded?"* The answer should quote lines from the runbook and cite them as `runbook:NN`.
 5. **Sign in as the Approver**, then use **Approve draft** followed by **Publish approved runbook**. The status should move `draft` → `approved` → `published`.
-6. **Read the audit log.** It is exposed as an approver-only API endpoint rather than as a page in the interface. While signed in as the Approver, open [`/api/audit`](https://living-runbook.onrender.com/api/audit) in a new tab and you will see the login, analysis, approval, and publication events recorded against the acting user. Requesting that same URL while signed in as the Editor returns `401 Forbidden` — which is the most direct demonstration of server-side authorization in the project.
+6. **Read the audit log.** It is exposed as an approver-only API endpoint rather than as a page in the interface. While signed in as the Approver, open [`/api/audit`](https://living-runbook.onrender.com/api/audit) in a new tab and you will see the login, analysis, approval, and publication events recorded against the acting user. The same URL demonstrates the authorization boundary three ways: no session returns `401 Unauthorized`, a session belonging to the Editor returns `403 Forbidden`, and an Approver session returns the events.
 
 ### Things worth trying that should be refused
 
