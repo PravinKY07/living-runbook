@@ -136,7 +136,7 @@ The GitHub Action is manually triggered and calls the same hosted API the web in
 This demo runs on free-tier hosting, so:
 
 - The service may sleep when idle and take up to a minute to respond.
-- **Storage is ephemeral.** A redeploy erases all runbooks, versions, approvals, and audit events. The demo accounts are recreated automatically; analyzed runbooks are not.
+- **Storage is ephemeral.** No persistent disk is attached to this host, so a redeploy erases all runbooks, versions, approvals, and audit events. The demo accounts are recreated automatically; analyzed runbooks are not. Attaching a disk, as `docs/DEPLOYMENT.md` describes, would change this.
 - There is no uptime guarantee, no backup, and no support commitment.
 
 ## Privacy
