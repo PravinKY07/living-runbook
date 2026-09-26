@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { api, API_BASE } from "./api.js";
+import { DEMO_ACCOUNTS } from "./demoAccounts.js";
 
 const POLL_INTERVAL_MS = 1000;
 
@@ -46,17 +47,21 @@ function LoginForm({ onLogin }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function handleSubmit(event) {
-    event.preventDefault();
+  async function submit(credentials) {
     setError("");
     setBusy(true);
     try {
-      onLogin(await api.login(email, password));
+      onLogin(await api.login(credentials.email, credentials.password));
     } catch (loginError) {
       setError(loginError.message);
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    await submit({ email, password });
   }
 
   return (
@@ -75,6 +80,27 @@ function LoginForm({ onLogin }) {
           private repositories. Verify every finding against the source before acting on
           it. Full caveats and suggested tests are in the <code>README</code>.
         </p>
+        <div className="quick-start">
+          <p className="eyebrow">Quick start</p>
+          <p className="muted">
+            Pick a role to sign straight in. Both are seeded demo accounts on an
+            evaluation instance that holds no real data.
+          </p>
+          <div className="demo-buttons">
+            {Object.values(DEMO_ACCOUNTS).map((account) => (
+              <button
+                key={account.email}
+                type="button"
+                className="secondary"
+                disabled={busy}
+                onClick={() => submit(account)}
+              >
+                {busy ? "Signing in…" : account.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="divider">or sign in manually</p>
         <form onSubmit={handleSubmit} className="stack">
           <label>
             Email

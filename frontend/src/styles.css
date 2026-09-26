@@ -312,6 +312,52 @@ label {
   text-underline-offset: 2px;
 }
 
+.quick-start {
+  margin: 1.15rem 0 0.9rem;
+  padding: 0.8rem 0.85rem;
+  border: 1px solid #d9e0e8;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.quick-start p {
+  margin-bottom: 0.6rem;
+}
+
+.quick-start p:last-child {
+  margin-bottom: 0;
+}
+
+.demo-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.demo-buttons button {
+  flex: 1 1 auto;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0 0 1rem;
+  color: #64748b;
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: #e2e8f0;
+}
+
 .ask-form {
   grid-template-columns: 1fr auto;
   align-items: end;

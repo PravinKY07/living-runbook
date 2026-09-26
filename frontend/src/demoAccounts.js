@@ -1,0 +1,26 @@
+// Credentials for the two seeded demo accounts on the public evaluation
+// instance. The quick sign-in buttons below submit these to the ordinary
+// POST /api/auth/login endpoint, so the backend still verifies the password
+// against the stored Argon2 hash and still resolves the role server-side. The
+// browser never asserts a role -- these values are credentials only.
+//
+// These accounts are throwaway. The instance holds no real data, its database
+// is ephemeral, and the same values are published in this repository's pinned
+// issue, so compiling them into the public bundle adds no confidentiality
+// loss. See the "Demo accounts" section of README.md.
+//
+// ACTION REQUIRED BEFORE BUILDING: replace the two placeholders below with the
+// real values from the Render dashboard (DEMO_EDITOR_PASSWORD and
+// DEMO_APPROVER_PASSWORD). The build is verified to contain no placeholder.
+export const DEMO_ACCOUNTS = {
+  editor: {
+    label: "Test as Editor",
+    email: "editor@example.test",
+    password: "iviNgB00k_81%!",
+  },
+  approver: {
+    label: "Test as Approver",
+    email: "approver@example.test",
+    password: "app91_/,ranbuk",
+  },
+};
