@@ -125,6 +125,7 @@ No credentials, API keys, passwords, private repository data, or `.env` values b
   - `phase-5-audit-endpoint-bob-task.png` — audit endpoint review task
   - `final-live-demo.png` — live deployed demo, added after the Render and Vercel deployment
   - `final-bob-task-summary.png` — final deployment-readiness verification, added after deployment
+  - `final-bob-readme-claims-review.png` — claim-by-claim verification of the README against the implementation, which found three overstated claims that were then corrected
 
 ## Scope boundaries
 

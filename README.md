@@ -187,7 +187,7 @@ This project was developed with AI assistance, and it is worth being precise abo
 
 These were development-time tools. **Neither is a dependency of the running application:**
 
-- **IBM Bob** was used throughout development to review changes, audit the security posture of the analysis and approval flow, and carry out a final deployment-readiness verification before release. Evidence from those sessions is kept in [`bob_sessions/`](./bob_sessions).
+- **IBM Bob** was used throughout development to review changes, audit the security posture of the analysis and approval flow, and carry out a final deployment-readiness verification before release. A later pass checked this README claim by claim against the implementation; it found three overstated claims — a workflow that "structurally cannot publish", evidence excerpts that "must match" their source line, and security behaviour described more strongly than the code supports — all of which were corrected here. Evidence from those sessions is kept in [`bob_sessions/`](./bob_sessions).
 - **An AI coding agent** (OpenCode, running the Space Bunny model) was used for implementation, debugging, test work, and documentation.
 
 **At runtime the application makes no model calls at all.** Every runbook is produced by local, deterministic static analysis running inside the backend. Repository content is never transmitted to any external service, and output is labelled `static` or `mock` — a label enforced by the stored data model rather than by convention.
