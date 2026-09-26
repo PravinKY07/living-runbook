@@ -115,7 +115,7 @@ Approving records *who* approved and *when*. Both transitions append an audit ev
 | **Publish approved runbook** | Approver, and only while the status is `approved` | Marks it published. This creates no file and no public page — see below. |
 | **Ask** | Anyone signed in | Answers only from the stored runbook, citing `runbook:NN`. Refusals are keyword guards; see the note in *Things worth trying that should be refused*. |
 | **Version dropdown** | Anyone signed in | Lists stored versions and shows a line diff against the current one. |
-| **Audit log (JSON)** | Approver only | Opens the audit endpoint in a new tab. |
+| **Audit log (JSON)** | Approver only | Opens the audit endpoint in a new tab. System-wide by design, not personal: a trail that showed only your own actions could not show failed logins or another actor. Everyone here shares the same two accounts and one database. |
 | **Sign out** | Anyone signed in | Clears the session cookie. |
 
 ### Where your data is stored
