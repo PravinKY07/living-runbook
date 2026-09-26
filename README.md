@@ -92,6 +92,57 @@ The last row is worth calling out. The approve and publish controls are not *dis
 12. Records security-relevant actions in an audit log.
 13. Deletes the temporary workspace when the job finishes or fails.
 
+### The runbook lifecycle
+
+```text
+draft ──approve──▶ approved ──publish──▶ published
+```
+
+One-way. There is no unpublish and no re-approve: approving requires the current status to be `draft`, and publishing requires it to be `approved`, so once a runbook is published neither action applies again.
+
+Each transition is checked **twice**. The route declares `require_roles("approver")` as a dependency, and the store independently re-checks the role before it writes. Hiding the buttons in the interface is a convenience; the server is the control.
+
+Approving records *who* approved and *when*. Both transitions append an audit event carrying the acting user's id, which is what the audit log shows you.
+
+### What each control does
+
+| Control | Who sees it | What it does |
+| --- | --- | --- |
+| **Test as Editor** / **Test as Approver** | Everyone, on sign-in | Submits a seeded demo account to the ordinary `POST /api/auth/login`. The backend still verifies the password and resolves the role — the buttons remove typing, not authentication. |
+| **Sign in** | Everyone | The same endpoint, typed by hand. |
+| **Start safe analysis** | Anyone signed in | Queues a background job and returns immediately. The page then polls that job once a second. |
+| **Approve draft** | Approver, and only while the status is `draft` | Marks the runbook approved and records the approver. |
+| **Publish approved runbook** | Approver, and only while the status is `approved` | Marks it published. This creates no file and no public page — see below. |
+| **Ask** | Anyone signed in | Answers only from the stored runbook, citing `runbook:NN`. Refusals are keyword guards; see the note in *Things worth trying that should be refused*. |
+| **Version dropdown** | Anyone signed in | Lists stored versions and shows a line diff against the current one. |
+| **Audit log (JSON)** | Approver only | Opens the audit endpoint in a new tab. |
+| **Sign out** | Anyone signed in | Clears the session cookie. |
+
+### Where your data is stored
+
+One SQLite file, at the path given by `DATABASE_PATH` — `backend/data/living_runbook.db` on this host. Two tables matter:
+
+- **`runbooks`** — one row per runbook: its id, the repository URL, the exact commit analyzed, the provider, the current version, the status, and when it was created.
+- **`runbook_versions`** — the runbook Markdown itself, plus its SHA-256, prompt version, status, approver, and approval time.
+
+The analyzed repository is **not** retained. It is cloned into a temporary workspace that is deleted when the job finishes or fails; only sanitized analysis, runbook text, and audit events survive.
+
+Every read recomputes the SHA-256 of the stored Markdown and refuses to return it if the hash does not match, so tampering is caught on the way out and not only on the way in.
+
+### What publishing does and does not do
+
+**Does:** flip the status to `published`, record the acting approver in the audit log, and mark that runbook as the official one inside the application.
+
+**Does not:** write a file, create a public page, notify anyone, or deploy anything. Publishing is a state change recorded in the database, nothing more.
+
+The `docs/generated-runbook.md` file in this repository is produced by a **different mechanism** — the manually triggered GitHub Action, which writes Markdown to a branch and opens a pull request. It does not use the publish button and does not touch this table.
+
+### Versions in practice
+
+Each analysis creates a **new runbook** at version 1. Nothing in the current flow creates a second version of the same runbook, so the version panel will normally report *"Only the current version is available."*
+
+The versioning tables, the `/versions` endpoint, the diff view, and their tests all exist and are exercised by the test suite; the live path simply produces one version per runbook today.
+
 ## The most important caveat, in detail
 
 Static analysis reads code. It does not run it. It can tell you what handlers exist, what a function references, which dependencies are declared, and what failure paths are visible in the source. It **cannot** tell you what actually happens under load, in production, or at runtime.
@@ -207,7 +258,7 @@ A user should be able to:
 3. See safe analysis progress.
 4. Generate a Markdown runbook with source evidence.
 5. Ask questions about the service.
-6. Review runbook versions and diffs.
+6. Review stored runbook versions. The current flow produces one version per runbook — see [Versions in practice](#versions-in-practice).
 7. Approve a runbook before publishing it.
 
 ## Security promise
