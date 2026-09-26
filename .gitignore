@@ -2,7 +2,10 @@
 .env.*
 !.env.example
 
-.venv
+# Local virtual environments. The pattern also covers renamed copies such as
+# .venv-old-backup, which would otherwise show up as thousands of untracked
+# files and could be committed by an accidental `git add .`.
+.venv*/
 __pycache__
 *.pyc
 
