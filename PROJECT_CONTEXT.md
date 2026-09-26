@@ -119,7 +119,12 @@ No credentials, API keys, passwords, private repository data, or `.env` values b
 - [`README.md`](./README.md) — public overview and setup
 - [`AGENTS.md`](./AGENTS.md) — project source of truth, architecture, security requirements, and implementation rules
 - [`.env.example`](./.env.example) — safe configuration template
-- `bob_sessions/` — required IBM Bob task-session evidence screenshots
+- `bob_sessions/` — required IBM Bob task-session evidence screenshots:
+  - `phase-0-bob-session-evidence.png` — Phase 0 foundation and health endpoint session
+  - `phase-5-bob-security-review.png` — read-only security review of the analysis and approval flow
+  - `phase-5-audit-endpoint-bob-task.png` — audit endpoint review task
+  - `final-live-demo.png` — live deployed demo, added after the Render and Vercel deployment
+  - `final-bob-task-summary.png` — final deployment-readiness verification, added after deployment
 
 ## Scope boundaries
 
