@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Living Runbook Generator</title>
+  <!-- Rounded tile in the same brand blue as the role badge and audit link. -->
+  <rect width="32" height="32" rx="7" fill="#1e3a8a" />
+  <!-- Two rules standing in for runbook text lines. -->
+  <g fill="#ffffff">
+    <rect x="8" y="7" width="16" height="2.8" rx="1.4" />
+    <rect x="8" y="12" width="16" height="2.8" rx="1.4" />
+  </g>
+  <!-- Approval check, sized to clear the second rule by 2.3 units. -->
+  <path
+    d="M9.5 20L13 23.5L22.5 18.5"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="2.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>
