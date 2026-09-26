@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { api } from "./api.js";
+import { api, API_BASE } from "./api.js";
 
 const POLL_INTERVAL_MS = 1000;
 
@@ -119,6 +119,16 @@ function Header({ user, onLogout }) {
       <div className="user-actions">
         <span className="role-badge">{user.role}</span>
         <span className="muted">{user.email}</span>
+        {user.role === "approver" && (
+          <a
+            className="audit-link"
+            href={`${API_BASE}/api/audit`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Audit log (JSON)
+          </a>
+        )}
         <button type="button" className="secondary" onClick={onLogout}>
           Sign out
         </button>

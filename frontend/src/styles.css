@@ -304,6 +304,14 @@ label {
   margin-top: 1rem;
 }
 
+.audit-link {
+  color: #1e3a8a;
+  font-size: 0.78rem;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .ask-form {
   grid-template-columns: 1fr auto;
   align-items: end;
