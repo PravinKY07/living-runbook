@@ -139,6 +139,28 @@ h2 {
   font-size: 0.78rem;
 }
 
+.callout {
+  margin: 1rem 0;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #e7d9b8;
+  border-left: 3px solid #d97706;
+  border-radius: 4px;
+  background: #fffbeb;
+  color: #57534e;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.callout strong {
+  color: #451a03;
+}
+
+.callout code {
+  background: #fef3c7;
+  padding: 0 0.2rem;
+  border-radius: 3px;
+}
+
 .card {
   margin: 1rem 0;
   padding: 1.2rem;

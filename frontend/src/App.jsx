@@ -67,6 +67,14 @@ function LoginForm({ onLogin }) {
         <p className="muted">
           Safe, evidence-backed operational runbooks from a public GitHub repository.
         </p>
+        <p className="callout">
+          <strong>Read before testing.</strong> This is a demo instance for evaluation,
+          not a production service. It produces an <strong>unverified draft</strong>{" "}
+          runbook from static analysis, so findings may be wrong or incomplete. It never
+          executes repository code, never deploys or changes anything, and cannot read
+          private repositories. Verify every finding against the source before acting on
+          it. Full caveats and suggested tests are in the <code>README</code>.
+        </p>
         <form onSubmit={handleSubmit} className="stack">
           <label>
             Email
@@ -257,6 +265,10 @@ function RunbookView({ runbook, runbookId, user, onRunbook, onError }) {
           <span>Status: {metadata.status}</span>
           {metadata.repository_commit && <span>Commit: {metadata.repository_commit.slice(0, 12)}</span>}
         </div>
+        <p className="callout">
+          <strong>Draft output from static analysis.</strong> Findings are unverified and
+          may be wrong or incomplete. Check them against the source before acting on them.
+        </p>
         <pre className="runbook-content">{runbook.content}</pre>
         <div className="approval-actions">
           {canApprove ? (
