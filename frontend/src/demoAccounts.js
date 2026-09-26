@@ -16,7 +16,7 @@ export const DEMO_ACCOUNTS = {
   editor: {
     label: "Test as Editor",
     email: "editor@example.test",
-    password: "iviNgB00k_81%!",
+    password: "liviNgB00k_81%!",
   },
   approver: {
     label: "Test as Approver",
