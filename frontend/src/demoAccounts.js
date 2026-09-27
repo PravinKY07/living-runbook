@@ -8,18 +8,14 @@
 // is ephemeral, and the same values are published in this repository's pinned
 // issue, so compiling them into the public bundle adds no confidentiality
 // loss. See the "Demo accounts" section of README.md.
-//
-// ACTION REQUIRED BEFORE BUILDING: replace the two placeholders below with the
-// real values from the Render dashboard (DEMO_EDITOR_PASSWORD and
-// DEMO_APPROVER_PASSWORD). The build is verified to contain no placeholder.
 export const DEMO_ACCOUNTS = {
   editor: {
-    label: "Test as Editor",
+    label: "Editor",
     email: "editor@example.test",
     password: "liviNgB00k_81%!",
   },
   approver: {
-    label: "Test as Approver",
+    label: "Approver",
     email: "approver@example.test",
     password: "app91_/,ranbuk",
   },

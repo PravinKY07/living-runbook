@@ -44,7 +44,7 @@ approver@example.test
 
 These accounts are **shared** — everyone using this demo uses the same accounts and the same database. Do not enter anything confidential. Credentials are listed in the pinned issue on this repository.
 
-The sign-in page offers **Test as Editor** and **Test as Approver** buttons that submit these accounts for you, with the normal email and password form kept underneath. The buttons call the ordinary `POST /api/auth/login` endpoint — the backend still verifies the password against the stored Argon2 hash and still resolves the role server-side. **The browser never asserts a role**; it sends credentials only, so the authorization boundary described below is unchanged.
+The sign-in page offers **Editor** and **Approver** quick sign-in buttons that submit these accounts for you, under a "Quick start" heading, with the normal email and password form kept underneath. The buttons call the ordinary `POST /api/auth/login` endpoint — the backend still verifies the password against the stored Argon2 hash and still resolves the role server-side. **The browser never asserts a role**; it sends credentials only, so the authorization boundary described below is unchanged.
 
 For that reason the demo passwords are compiled into the public frontend bundle, and the same values appear in this repository's pinned issue. This is deliberate and low-risk for this instance: the accounts are throwaway, no real data is stored, the database is ephemeral, and a redeploy reseeds the accounts anyway. They grant access to nothing beyond this demo.
 
@@ -108,7 +108,7 @@ Approving records *who* approved and *when*. Both transitions append an audit ev
 
 | Control | Who sees it | What it does |
 | --- | --- | --- |
-| **Test as Editor** / **Test as Approver** | Everyone, on sign-in | Submits a seeded demo account to the ordinary `POST /api/auth/login`. The backend still verifies the password and resolves the role — the buttons remove typing, not authentication. |
+| **Editor** / **Approver** (quick sign-in) | Everyone, on sign-in | Submits a seeded demo account to the ordinary `POST /api/auth/login`. The backend still verifies the password and resolves the role — the buttons remove typing, not authentication. |
 | **Sign in** | Everyone | The same endpoint, typed by hand. |
 | **Start safe analysis** | Anyone signed in | Queues a background job and returns immediately. The page then polls that job once a second. |
 | **Approve draft** | Approver, and only while the status is `draft` | Marks the runbook approved and records the approver. |
