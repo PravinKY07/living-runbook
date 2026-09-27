@@ -27,6 +27,12 @@ You provide the URL of a **public** GitHub repository. The system reads a saniti
 
 ## Try it yourself
 
+The live app is here:
+
+**[https://living-runbook.vercel.app](https://living-runbook.vercel.app)**
+
+Sign in with the shared demo accounts below — the sign-in page has a one-click button for each role. The API is at `https://living-runbook.onrender.com`, but you do not need to open it directly.
+
 Use the public fixture repository. It is small, clones in seconds, and exists for exactly this purpose:
 
 ```text
