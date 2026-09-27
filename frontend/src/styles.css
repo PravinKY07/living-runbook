@@ -30,6 +30,11 @@ button {
   background: #1d4ed8;
   font-weight: 650;
   cursor: pointer;
+  /* A button label is a control, not prose. Without this, dragging the
+     cursor across a button while clicking selects its text and the browser
+     paints the OS selection highlight over the control. */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 button:hover:not(:disabled) {
@@ -392,6 +397,10 @@ label {
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
+  /* Belt and braces: a link-styled control is still a control, and its label
+     should not flash the OS selection colour when the cursor crosses it. */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .link-button:hover {
