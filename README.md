@@ -115,6 +115,8 @@ The last row is worth calling out. The approve and publish controls are not *dis
 12. Records security-relevant actions in an audit log.
 13. Deletes the temporary workspace when the job finishes or fails.
 
+**On redirects:** the application never issues its own HTTP request for repository content. It shells out to `git`, which performs the fetch and follows any redirect itself, and the clone is pinned before it starts — HTTPS only, host exactly `github.com`, port 443, exactly two path segments, no credentials in the URL, and the hostname re-resolved and checked against private and reserved ranges immediately beforehand. Redirects are therefore not something the application validates. A `validate_redirect_url` helper with a GitHub host allowlist exists in the URL policy module and is unit tested, but nothing in the request path calls it; it is a safety utility for any future code that fetches over HTTP directly, not a control that is currently enforced.
+
 ### The runbook lifecycle
 
 ```text
