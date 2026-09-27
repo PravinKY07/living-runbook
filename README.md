@@ -209,7 +209,7 @@ Generated runbooks start in `draft` status. Only a user with the Approver role c
 
 The GitHub Action is manually triggered and calls the same hosted API the web interface uses. It generates a runbook, writes it to `docs/generated-runbook.md` on a new branch, and opens a pull request. It never merges and never publishes — a human reviews and merges, which is what keeps the runbook current without anything being changed automatically.
 
-To be precise about what has actually been exercised: the committed `docs/generated-runbook.md` was produced by a real run of this workflow, so the generate-and-write path is proven. The pull-request path is configured and its permissions are correct, but no run has yet needed to open a pull request, so treat "opens a pull request" as the design rather than as a demonstrated outcome.
+To be precise about what has actually been exercised: both halves of that path are proven by real runs, not just configured. The committed `docs/generated-runbook.md` was produced by a workflow run, and run #8 went on to open a real pull request proposing an update to it — so generate, write, branch, and pull-request creation have all executed end to end against this repository. What the workflow still never does is merge or publish: the pull request waits for a human, which is the point.
 
 ## Hosting limitations
 
