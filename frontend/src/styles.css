@@ -37,7 +37,11 @@ button {
   -webkit-user-select: none;
 }
 
-button:hover:not(:disabled) {
+/* Excludes link-styled controls. This rule's specificity (0,2,1) beats
+   .link-button's (0,1,0), so without the exclusion a link-styled control
+   inherits the filled dark-blue hover background while keeping its own dark
+   text colour, which renders as an unreadable block. */
+button:not(.link-button):hover:not(:disabled) {
   background: #1e40af;
   border-color: #1e40af;
 }
@@ -405,6 +409,8 @@ label {
 
 .link-button:hover {
   color: #1d4ed8;
+  background: none;
+  border-color: transparent;
 }
 
 .link-button:focus-visible {
