@@ -1,7 +1,11 @@
 import pytest
 
 from app.models.analysis import Evidence
-from app.security.evidence import EvidenceValidationError, validate_evidence
+from app.security.evidence import (
+    EvidenceValidationError,
+    validate_analysis_result,
+    validate_evidence,
+)
 from app.services.analysis_service import analyze_manifest
 from app.services.safe_manifest import SafeFileManifest, build_safe_manifest
 
@@ -80,6 +84,26 @@ def test_service_mapper_leaves_purpose_unknown_without_a_docstring(tmp_path):
 
     assert result.service.purpose is None
     assert result.service.purpose_evidence is None
+
+
+def test_purpose_evidence_is_validated_like_every_other_claim(tmp_path):
+    manifest = make_docstring_manifest(tmp_path)
+    result = analyze_manifest(manifest)
+
+    # A real docstring citation passes validation.
+    assert result.service.purpose_evidence is not None
+    validate_evidence(manifest, result.service.purpose_evidence)
+
+    # A purpose pointing outside the manifest must be rejected, not waved past.
+    tampered = result.model_copy(
+        update={
+            "service": result.service.model_copy(
+                update={"purpose_evidence": Evidence(file="missing.py", line=1, excerpt=None)}
+            )
+        }
+    )
+    with pytest.raises(EvidenceValidationError):
+        validate_analysis_result(manifest, tampered)
 
 
 def test_service_mapper_finds_routes_framework_and_external_calls(tmp_path):

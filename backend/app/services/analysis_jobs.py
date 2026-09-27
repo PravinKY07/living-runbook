@@ -19,6 +19,7 @@ from app.services.repository_loader import (
 )
 from app.services.runbook_store import RunbookApprovalError, SQLiteRunbookStore
 from app.services.runbook_writer import RunbookWriter
+from app.services.safe_manifest import RepositoryLimitError
 
 
 class AnalysisJobManager:
@@ -96,6 +97,19 @@ class AnalysisJobManager:
                 error_message="Repository analysis failed and temporary cleanup needs attention.",
             )
             self._audit("repository_cleanup_failed", "failure", resource_id=job_id)
+        except RepositoryLimitError:
+            # A repository over the file-count or total-size ceiling is a normal
+            # outcome, not a crash. It must still reach a terminal status or the
+            # job would sit in "running" forever and the client would poll on.
+            self._job_store.update(
+                job_id,
+                status="failed",
+                error_message=(
+                    "Repository is larger than this demo can analyze safely "
+                    "(limit: 500 files or 10 MB). Try a smaller repository."
+                ),
+            )
+            self._audit("analysis_failed", "failure", resource_id=job_id)
         except (
             EvidenceValidationError,
             RepositoryLoadError,

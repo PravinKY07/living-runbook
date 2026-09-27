@@ -50,6 +50,21 @@ The sign-in page offers **Editor** and **Approver** quick sign-in buttons that s
 
 For that reason the demo passwords are compiled into the public frontend bundle, and the same values appear in this repository's pinned issue. This is deliberate and low-risk for this instance: the accounts are throwaway, no real data is stored, the database is ephemeral, and a redeploy reseeds the accounts anyway. They grant access to nothing beyond this demo.
 
+### Analysis limits
+
+Any public `github.com` URL is accepted, but a repository is only analyzed up to a fixed ceiling, so that one submission cannot exhaust the host:
+
+| Limit | Value | Why |
+| --- | --- | --- |
+| Files read | 500 | Bounds clone and parse time |
+| Total size read | 10 MB | Bounds memory and disk on a free-tier host |
+| Single file | 512 KB | Bounds one oversized file |
+| Clone depth | 1 commit, no submodules | Bounds network time |
+
+A repository over the file-count or total-size ceiling is **refused with a clear message** rather than failing silently. If you try a large real project and see *"Repository is larger than this demo can analyze safely"*, that is the limit working, not a bug — try a smaller repository.
+
+Files are also filtered by type: only common source, config and documentation formats are read. `.env` (other than `.env.example`), private keys, credentials, databases and archives are skipped by design.
+
 ### The main path
 
 1. **Sign in as the Editor** and submit the fixture URL above.

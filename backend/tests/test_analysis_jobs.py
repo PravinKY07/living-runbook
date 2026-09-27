@@ -107,6 +107,38 @@ class FailingLoader:
         raise RepositoryLoadError("Repository clone failed safely.")
 
 
+class OverLimitLoader:
+    def load(self, url: str):
+        from app.services.safe_manifest import RepositoryLimitError
+
+        raise RepositoryLimitError("Repository exceeds the allowed file count.")
+
+
+def test_oversized_repository_reaches_a_terminal_status(tmp_path):
+    """A limit breach must not escape the worker and strand the job in running."""
+    database_path = str(tmp_path / "jobs.db")
+    manager = AnalysisJobManager(
+        job_store=SQLiteJobStore(database_path),
+        runbook_store=SQLiteRunbookStore(database_path),
+        audit_store=SQLiteAuditStore(database_path),
+        loader=OverLimitLoader(),
+        executor=InlineExecutor(),
+    )
+
+    job = manager.submit("https://github.com/example/project")
+    manager.wait(job.id)
+
+    failed = manager.get(job.id)
+    assert failed.status == "failed"
+    assert "larger than this demo can analyze" in (failed.error_message or "")
+    events = manager._audit_store.list_for_resource(job.id)
+    assert [event["event_type"] for event in events] == [
+        "analysis_submitted",
+        "analysis_started",
+        "analysis_failed",
+    ]
+
+
 class CleanupFailingLoader(FakeLoader):
     def load(self, url: str):
         return _CleanupFailingContext(super().load(url))

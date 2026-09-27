@@ -40,6 +40,8 @@ def validate_analysis_result(manifest: SafeFileManifest, result: AnalysisResult)
     _validate_findings(manifest, result.service.findings)
     _validate_findings(manifest, result.service.entrypoints)
     _validate_findings(manifest, result.service.external_calls)
+    if result.service.purpose_evidence is not None:
+        validate_evidence(manifest, result.service.purpose_evidence)
     _validate_findings(manifest, result.failures.findings)
     _validate_findings(manifest, result.failures.failure_modes)
     _validate_findings(manifest, result.dependencies.findings)

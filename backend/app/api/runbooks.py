@@ -146,13 +146,6 @@ def ask_runbook(
         ]
     else:
         section_lines = _matching_section_lines(lines, question_terms)
-        if section_lines and any(term.startswith("order") for term in question_terms):
-            order_lines = [
-                (line_number, line)
-                for line_number, line in section_lines
-                if "order" in line.lower()
-            ]
-            section_lines = order_lines or section_lines
         candidate_lines = section_lines or [
             (line_number, line)
             for line_number, line in enumerate(lines, start=1)
@@ -190,9 +183,12 @@ def _is_prompt_injection_question(question: str) -> bool:
         "developer message",
         "reveal instructions",
         "print the contents",
-        ".env",
     )
-    return any(term in normalized for term in injection_terms)
+    if any(term in normalized for term in injection_terms):
+        return True
+    # Asking about a real .env file is an exfiltration attempt, but the runbook
+    # legitimately cites .env.example, so that name stays answerable.
+    return ".env" in normalized and ".env.example" not in normalized
 
 
 def _is_sensitive_question(question: str) -> bool:
@@ -271,7 +267,7 @@ def _focus_terms(question_terms: set[str]) -> set[str]:
         return {"commit"}
     if "files" in question_terms and "analyzed" in question_terms:
         return {"files"}
-    if {"database", "db"} & question_terms:
+    if "database" in question_terms:
         return {"database", "db"}
     if "timeout" in question_terms:
         return {"timeout"}

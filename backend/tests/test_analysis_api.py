@@ -255,7 +255,12 @@ def test_qa_topics_are_focused_and_safe(tmp_path):
     orders_answer = ask("Where are the orders handled?")
     assert "orders" in orders_answer
     assert "def orders" not in orders_answer
-    assert "health" not in orders_answer
+    # The answer stays inside the Entry points section. It deliberately does not
+    # assert that other routes are excluded: narrowing to one route used to be
+    # hardcoded to the fixture's "orders" vocabulary and did nothing for any
+    # other repository.
+    assert "Failure modes" not in orders_answer
+    assert "Configuration" not in orders_answer
 
     framework_answer = ask("What framework does the service use?")
     assert "Framework: fastapi" in framework_answer

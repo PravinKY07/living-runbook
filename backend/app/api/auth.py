@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.user import UserRecord
-from app.security.passwords import verify_password
+from app.security.passwords import burn_password_check, verify_password
 from app.services.user_store import SQLiteUserStore
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
@@ -98,7 +98,16 @@ def login(request: Request, payload: LoginRequest) -> UserResponse:
     """Authenticate a user and create an HTTP-only session cookie."""
     _require_session_configured(request)
     user = _get_store(request).get_by_email(payload.email)
-    if user is None or not verify_password(payload.password, user.password_hash):
+    if user is None:
+        # Spend the same Argon2 work a real check would, so an unknown email is
+        # not detectably faster than a known one.
+        burn_password_check(payload.password)
+        _record_audit(request, event_type="auth_login", outcome="failure")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password.",
+        )
+    if not verify_password(payload.password, user.password_hash):
         _record_audit(request, event_type="auth_login", outcome="failure")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
