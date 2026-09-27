@@ -51,6 +51,7 @@ function LoginForm({ onLogin }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [caveatsOpen, setCaveatsOpen] = useState(false);
 
   async function submit(credentials) {
     setError("");
@@ -77,14 +78,31 @@ function LoginForm({ onLogin }) {
         <p className="muted">
           Safe, evidence-backed operational runbooks from a public GitHub repository.
         </p>
-        <p className="callout">
-          <strong>Read before testing.</strong> This is a demo instance for evaluation,
-          not a production service. It produces an <strong>unverified draft</strong>{" "}
-          runbook from static analysis, so findings may be wrong or incomplete. It never
-          executes repository code, never deploys or changes anything, and cannot read
-          private repositories. Verify every finding against the source before acting on
-          it. Full caveats and suggested tests are in the <code>README</code>.
-        </p>
+        <div className="callout callout-disclosure">
+          <p className="caveat-summary">
+            Demo instance. Drafts are <strong>unverified</strong>, and repository code is
+            never executed.
+          </p>
+          <button
+            type="button"
+            className="caveat-toggle"
+            aria-expanded={caveatsOpen}
+            aria-controls="login-caveats"
+            onClick={() => setCaveatsOpen((open) => !open)}
+          >
+            Read before testing
+            <span className="caveat-chevron" aria-hidden="true" />
+          </button>
+          <div id="login-caveats" className="caveat-more" hidden={!caveatsOpen}>
+            <p>
+              This is an evaluation instance, not a production service. Findings come from
+              static analysis, so they may be wrong or incomplete. It never deploys or
+              changes anything, and it cannot read private repositories. Verify every finding
+              against the source before acting on it. Full caveats and suggested tests are in
+              the <code>README</code>.
+            </p>
+          </div>
+        </div>
         <div className="quick-start">
           <p className="eyebrow">Quick start</p>
           <p className="muted">

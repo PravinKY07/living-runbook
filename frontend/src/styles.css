@@ -161,6 +161,69 @@ h2 {
   border-radius: 3px;
 }
 
+/* Login-page caveat disclosure. Scoped to .callout-disclosure so the runbook
+   callout in the generated-document view keeps its original single-block form. */
+.callout-disclosure {
+  padding-bottom: 0.6rem;
+}
+
+.caveat-summary {
+  margin: 0 0 0.4rem;
+}
+
+.caveat-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #92400e;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.caveat-toggle:hover {
+  color: #b45309;
+}
+
+.caveat-toggle:focus-visible {
+  outline: 2px solid #d97706;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.caveat-chevron {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 120ms ease;
+}
+
+.caveat-toggle[aria-expanded="true"] .caveat-chevron {
+  transform: rotate(-135deg) translateY(-2px);
+}
+
+.caveat-more {
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid #e7d9b8;
+}
+
+.caveat-more[hidden] {
+  display: none;
+}
+
+.caveat-more p {
+  margin: 0;
+}
+
 .card {
   margin: 1rem 0;
   padding: 1.2rem;
