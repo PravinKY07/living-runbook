@@ -37,11 +37,14 @@ button {
   -webkit-user-select: none;
 }
 
-/* Excludes link-styled controls. This rule's specificity (0,2,1) beats
-   .link-button's (0,1,0), so without the exclusion a link-styled control
-   inherits the filled dark-blue hover background while keeping its own dark
-   text colour, which renders as an unreadable block. */
-button:not(.link-button):hover:not(:disabled) {
+/* :where() contributes no specificity, so this hover rule scores (0,0,1) —
+   element only. That is deliberate. Written as button:hover:not(:disabled) it
+   scored (0,2,1) and beat every text-style control's own (0,1,0)
+   `background: none`, so hovering a link or the caveat toggle painted a solid
+   dark-blue block under its own dark text. At (0,0,1) any class-based rule
+   wins, so a text-style button stays transparent without opting out, and a new
+   one will behave correctly by default. */
+button:where(:hover:not(:disabled)) {
   background: #1e40af;
   border-color: #1e40af;
 }
@@ -409,8 +412,6 @@ label {
 
 .link-button:hover {
   color: #1d4ed8;
-  background: none;
-  border-color: transparent;
 }
 
 .link-button:focus-visible {
