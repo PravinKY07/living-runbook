@@ -46,6 +46,64 @@ def test_writer_generates_evidence_backed_markdown(tmp_path):
     assert "API_KEY" not in draft.content
 
 
+def make_duplicate_evidence_analysis(tmp_path: Path) -> AnalysisResult:
+    """Build an analysis where one source line backs two configuration findings."""
+    (tmp_path / "config.py").write_text(
+        "import os\n"
+        "\n"
+        'DATABASE_URL = os.getenv("DATABASE_URL")\n',
+        encoding="utf-8",
+    )
+    manifest = build_safe_manifest(tmp_path, repository_commit="abc1234")
+    return analyze_manifest(manifest, repository_url="https://github.com/example/project")
+
+
+def test_evidence_lines_are_not_duplicated(tmp_path):
+    analysis = make_duplicate_evidence_analysis(tmp_path)
+
+    # Guard the premise: the input really does cite one line more than once.
+    cited_lines = {(item.evidence.file, item.evidence.line) for item in analysis.configuration.settings}
+    assert len(analysis.configuration.settings) > len(cited_lines)
+
+    draft = RunbookWriter().write(analysis)
+    evidence_block = draft.content.split("## Evidence", 1)[1]
+    cited = [line for line in evidence_block.splitlines() if line.startswith("- `")]
+
+    assert cited, "expected at least one cited evidence line"
+    assert len(cited) == len(set(cited))
+
+
+def test_writer_renders_purpose_with_its_evidence(tmp_path):
+    (tmp_path / "app.py").write_text(
+        '"""A small FastAPI orders service used to demonstrate analysis."""\n'
+        "\n"
+        "from fastapi import FastAPI\n"
+        "\n"
+        'app = FastAPI(title="Fixture Orders API")\n'
+        "\n"
+        '@app.get("/health")\n'
+        "def health():\n"
+        '    return {"status": "ok"}\n',
+        encoding="utf-8",
+    )
+    manifest = build_safe_manifest(tmp_path, repository_commit="abc1234")
+    draft = RunbookWriter().write(
+        analyze_manifest(manifest, repository_url="https://github.com/example/project")
+    )
+
+    assert (
+        "- Purpose: A small FastAPI orders service used to demonstrate analysis."
+        " — evidence: `app.py:1`" in draft.content
+    )
+    assert "Not established by static analysis" not in draft.content.split("## Entry points")[0]
+
+
+def test_writer_falls_back_when_purpose_is_unknown(tmp_path):
+    draft = RunbookWriter().write(make_analysis(tmp_path))
+
+    assert "- Purpose: Not established by static analysis" in draft.content
+
+
 def test_final_runbook_scan_blocks_secret_content():
     result = scan_runbook("API_KEY=real-looking-value")
 

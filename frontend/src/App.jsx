@@ -5,6 +5,11 @@ import { DEMO_ACCOUNTS } from "./demoAccounts.js";
 
 const POLL_INTERVAL_MS = 1000;
 
+// A public fixture repository provided so the analysis flow can be tried
+// without pointing the tool at anyone's own code. Any public github.com
+// repository URL is accepted; this one is only a convenience.
+const SAMPLE_REPOSITORY_URL = "https://github.com/PravinKY07/runbook-demo-fixture";
+
 function wait(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -200,6 +205,17 @@ function RepositoryForm({ onJob, onError, busy }) {
             required
           />
         </label>
+        <p className="sample-hint">
+          Not sure what to try?{" "}
+          <button
+            type="button"
+            className="link-button"
+            onClick={() => setRepositoryUrl(SAMPLE_REPOSITORY_URL)}
+          >
+            Use the sample repository
+          </button>{" "}
+          to fill the field. Any public repository works.
+        </p>
         <button type="submit" disabled={busy}>
           {busy ? "Analyzing repository…" : "Start safe analysis"}
         </button>

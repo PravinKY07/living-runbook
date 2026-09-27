@@ -30,6 +30,7 @@ class ServiceAnalysis(BaseModel):
 
     service_name: str | None = None
     purpose: str | None = None
+    purpose_evidence: Evidence | None = None
     language: str | None = None
     framework: str | None = None
     entrypoints: list[Finding] = Field(default_factory=list)

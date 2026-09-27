@@ -45,6 +45,43 @@ def database_url():
     return build_safe_manifest(tmp_path, repository_commit="abc1234")
 
 
+def make_docstring_manifest(tmp_path) -> SafeFileManifest:
+    (tmp_path / "app.py").write_text(
+        '"""A small FastAPI orders service used to demonstrate analysis.\n'
+        "\n"
+        "It exposes a health check and an orders endpoint, and enriches orders\n"
+        'with stock levels from an external inventory service over HTTP.\n'
+        '"""\n'
+        "\n"
+        "from fastapi import FastAPI\n"
+        "\n"
+        'app = FastAPI(title="Fixture Orders API")\n'
+        "\n"
+        '@app.get("/health")\n'
+        "def health():\n"
+        '    return {"status": "ok"}\n',
+        encoding="utf-8",
+    )
+    return build_safe_manifest(tmp_path, repository_commit="abc1234")
+
+
+def test_service_mapper_derives_purpose_from_module_docstring(tmp_path):
+    result = analyze_manifest(make_docstring_manifest(tmp_path))
+
+    # Only the leading summary sentence is used, never the trailing prose.
+    assert result.service.purpose == "A small FastAPI orders service used to demonstrate analysis."
+    assert result.service.purpose_evidence is not None
+    assert result.service.purpose_evidence.file == "app.py"
+    assert result.service.purpose_evidence.line == 1
+
+
+def test_service_mapper_leaves_purpose_unknown_without_a_docstring(tmp_path):
+    result = analyze_manifest(make_fixture_manifest(tmp_path))
+
+    assert result.service.purpose is None
+    assert result.service.purpose_evidence is None
+
+
 def test_service_mapper_finds_routes_framework_and_external_calls(tmp_path):
     result = analyze_manifest(make_fixture_manifest(tmp_path))
 

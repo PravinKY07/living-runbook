@@ -33,6 +33,8 @@ Use the public fixture repository. It is small, clones in seconds, and exists fo
 https://github.com/PravinKY07/runbook-demo-fixture
 ```
 
+The sign-in page's **Editor** and **Approver** buttons aside, the analysis form carries a **Use the sample repository** control that fills this URL, so the flow can be tried without pointing the tool at your own code. It is a convenience only — any public `github.com` repository URL is accepted.
+
 ### Demo accounts
 
 Access uses two seeded accounts, one per role:

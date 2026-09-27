@@ -43,6 +43,11 @@ class RunbookWriter:
 
     def _render(self, analysis: AnalysisResult) -> str:
         service = analysis.service
+        purpose_evidence = (
+            f" — evidence: `{service.purpose_evidence.file}:{service.purpose_evidence.line}`"
+            if service.purpose_evidence
+            else ""
+        )
         lines = [
             "# Service Runbook",
             "",
@@ -59,7 +64,7 @@ class RunbookWriter:
             "## Service overview",
             "",
             f"- Name: {service.service_name or 'Not established by static analysis'}",
-            f"- Purpose: {service.purpose or 'Not established by static analysis'}",
+            f"- Purpose: {service.purpose or 'Not established by static analysis'}{purpose_evidence}",
             f"- Language: {service.language or 'Not established by static analysis'}",
             f"- Framework: {service.framework or 'Not established by static analysis'}",
             "",
@@ -115,9 +120,16 @@ class RunbookWriter:
                 "",
             ]
         )
+        seen_evidence: set[tuple[str, int, str]] = set()
         for finding in _all_findings(analysis):
             for evidence in finding.evidence:
                 excerpt = evidence.excerpt or "source excerpt unavailable"
+                # One source line can back several findings (two configuration
+                # names on one line, for example). Cite it once.
+                key = (evidence.file, evidence.line, excerpt)
+                if key in seen_evidence:
+                    continue
+                seen_evidence.add(key)
                 lines.append(f"- `{evidence.file}:{evidence.line}` — {excerpt}")
         if not _all_findings(analysis):
             lines.append("- No evidence-backed findings were produced.")
