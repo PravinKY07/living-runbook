@@ -17,7 +17,11 @@ from app.services.repository_loader import (
     RepositoryLoader,
     RepositoryLoadError,
 )
-from app.services.runbook_store import RunbookApprovalError, SQLiteRunbookStore
+from app.services.runbook_store import (
+    RunbookApprovalError,
+    RunbookIntegrityError,
+    SQLiteRunbookStore,
+)
 from app.services.runbook_writer import RunbookWriter
 from app.services.safe_manifest import RepositoryLimitError
 
@@ -55,7 +59,14 @@ class AnalysisJobManager:
         future = self._executor.submit(self._run, job.id, repository.normalized_url)
         with self._lock:
             self._futures[job.id] = future
+        # Registered after insertion so the callback always finds its entry.
+        # Without this the map grows for the lifetime of the process.
+        future.add_done_callback(lambda _done: self._discard(job.id))
         return job
+
+    def _discard(self, job_id: str) -> None:
+        with self._lock:
+            self._futures.pop(job_id, None)
 
     def wait(self, job_id: str, timeout: float | None = None) -> None:
         """Wait for a job in tests or controlled shutdown paths."""
@@ -114,12 +125,18 @@ class AnalysisJobManager:
             EvidenceValidationError,
             RepositoryLoadError,
             RunbookApprovalError,
+            RunbookIntegrityError,
             KeyError,
+            IndexError,
+            AttributeError,
             OSError,
             TypeError,
             ValueError,
             sqlite3.Error,
         ):
+            # Kept deliberately broad. A repository is untrusted input, and an
+            # exception type missing from this tuple does not fail the job, it
+            # kills the worker thread and leaves the job polling forever.
             self._job_store.update(
                 job_id,
                 status="failed",

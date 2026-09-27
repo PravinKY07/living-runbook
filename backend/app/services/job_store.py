@@ -15,6 +15,13 @@ class JobNotFoundError(LookupError):
     """Raised when an analysis job does not exist."""
 
 
+class _Unset:
+    """Sentinel marking an update argument the caller did not supply."""
+
+
+_UNSET = _Unset()
+
+
 class SQLiteJobStore:
     """Persist job state so the UI can safely show progress and failures."""
 
@@ -24,15 +31,16 @@ class SQLiteJobStore:
         self._connection: sqlite3.Connection | None = None
 
     def _connect(self) -> sqlite3.Connection:
-        if self._connection is None:
-            if self._database_path != ":memory:":
-                Path(self._database_path).parent.mkdir(parents=True, exist_ok=True)
-            self._connection = sqlite3.connect(
-                self._database_path,
-                check_same_thread=False,
-            )
-            self._connection.row_factory = sqlite3.Row
-        return self._connection
+        with self._lock:
+            if self._connection is None:
+                if self._database_path != ":memory:":
+                    Path(self._database_path).parent.mkdir(parents=True, exist_ok=True)
+                self._connection = sqlite3.connect(
+                    self._database_path,
+                    check_same_thread=False,
+                )
+                self._connection.row_factory = sqlite3.Row
+            return self._connection
 
     def initialize(self) -> None:
         """Create the jobs table if it does not exist."""
@@ -92,18 +100,26 @@ class SQLiteJobStore:
         job_id: str,
         *,
         status: JobStatus,
-        runbook_id: str | None = None,
-        error_message: str | None = None,
+        runbook_id: str | None | _Unset = _UNSET,
+        error_message: str | None | _Unset = _UNSET,
     ) -> AnalysisJob:
-        """Update a job with a safe status and optional result reference."""
+        """Update a job status, preserving fields the caller did not supply.
+
+        Omitting runbook_id or error_message leaves the stored value alone, so a
+        partial status update cannot silently erase a result or an error.
+        """
         with self._lock:
             current = self.get(job_id)
             updated = current.model_copy(
                 update={
                     "status": status,
                     "updated_at": datetime.now(UTC),
-                    "runbook_id": runbook_id,
-                    "error_message": error_message,
+                    "runbook_id": current.runbook_id if isinstance(runbook_id, _Unset) else runbook_id,
+                    "error_message": (
+                        current.error_message
+                        if isinstance(error_message, _Unset)
+                        else error_message
+                    ),
                 }
             )
             self._connect().execute(

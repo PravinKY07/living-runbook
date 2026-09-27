@@ -31,9 +31,9 @@ def analyze_services(manifest: SafeFileManifest) -> ServiceAnalysis:
     purpose_candidates: list[tuple[bool, str, ManifestFile, int]] = []
 
     for item in python_files(manifest):
-        python_found = True
         if is_test_path(item.path):
             continue
+        python_found = True
         tree = parse_python(item)
         if tree is None:
             findings.append(

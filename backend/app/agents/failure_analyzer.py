@@ -11,7 +11,17 @@ from app.services.safe_manifest import SafeFileManifest
 
 _TIMEOUT_PATTERN = re.compile(r"\b(timeout|retry|backoff)\b", re.IGNORECASE)
 _ERROR_STATUS_PATTERN = re.compile(r"\b(status_code\s*=\s*5\d\d|HTTP\s*5\d\d)\b", re.IGNORECASE)
-_DATABASE_PATTERN = re.compile(r"\b(connect|execute|executemany|cursor|commit|rollback)\b", re.IGNORECASE)
+# Matching the bare word "commit" reported ordinary prose and git messages as
+# database operations. Require a database-shaped receiver, an unambiguous data
+# call, or a SQL keyword instead.
+_DATABASE_PATTERN = re.compile(
+    r"\.\s*(?:execute|executemany|executescript|fetchone|fetchall|fetchmany)\s*\("
+    r"|\b(?:db|database|conn|connection|cursor|session|engine|pool|sqlite3?)\s*\.\s*"
+    r"(?:connect|commit|rollback|close)\s*\("
+    r"|\b(?:SELECT\s+[\w*,\s.]+\s+FROM|INSERT\s+INTO|UPDATE\s+\w+\s+SET"
+    r"|DELETE\s+FROM|CREATE\s+TABLE)\b",
+    re.IGNORECASE,
+)
 
 
 def analyze_failures(manifest: SafeFileManifest) -> FailureAnalysis:

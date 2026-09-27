@@ -17,15 +17,16 @@ class SQLiteUserStore:
         self._connection: sqlite3.Connection | None = None
 
     def _connect(self) -> sqlite3.Connection:
-        if self._connection is None:
-            if self._database_path != ":memory:":
-                Path(self._database_path).parent.mkdir(parents=True, exist_ok=True)
-            self._connection = sqlite3.connect(
-                self._database_path,
-                check_same_thread=False,
-            )
-            self._connection.row_factory = sqlite3.Row
-        return self._connection
+        with self._lock:
+            if self._connection is None:
+                if self._database_path != ":memory:":
+                    Path(self._database_path).parent.mkdir(parents=True, exist_ok=True)
+                self._connection = sqlite3.connect(
+                    self._database_path,
+                    check_same_thread=False,
+                )
+                self._connection.row_factory = sqlite3.Row
+            return self._connection
 
     def initialize(self) -> None:
         """Create the users table if it does not exist."""

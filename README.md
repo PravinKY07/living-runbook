@@ -209,6 +209,8 @@ Generated runbooks start in `draft` status. Only a user with the Approver role c
 
 The GitHub Action is manually triggered and calls the same hosted API the web interface uses. It generates a runbook, writes it to `docs/generated-runbook.md` on a new branch, and opens a pull request. It never merges and never publishes — a human reviews and merges, which is what keeps the runbook current without anything being changed automatically.
 
+To be precise about what has actually been exercised: the committed `docs/generated-runbook.md` was produced by a real run of this workflow, so the generate-and-write path is proven. The pull-request path is configured and its permissions are correct, but no run has yet needed to open a pull request, so treat "opens a pull request" as the design rather than as a demonstrated outcome.
+
 ## Hosting limitations
 
 This demo runs on free-tier hosting, so:
@@ -217,14 +219,29 @@ This demo runs on free-tier hosting, so:
 - **Storage is ephemeral.** No persistent disk is attached to this host, so a redeploy erases all runbooks, versions, approvals, and audit events. The demo accounts are recreated automatically; analyzed runbooks are not. Attaching a disk, as `docs/DEPLOYMENT.md` describes, would change this.
 - There is no uptime guarantee, no backup, and no support commitment.
 
+## Known analysis limitations
+
+The runbook is only as trustworthy as the analysis behind it, so it is worth being specific about where that analysis is weak. Every finding below is a place where the output can be wrong in a specific, nameable way.
+
+- **Citations are real, detection is heuristic.** Every `file:line` reference is validated against the sanitized manifest before storage, so a citation cannot point at a line that does not exist or at a line that does not contain the claim. That guarantee is about *citations*, not about *interpretation*: whether a detected pattern means what the runbook says it means is a judgement the static analysis cannot make.
+- **Python only, and only the `ast.Call` form of an external call.** An outbound request is detected when the call's root name is the module, as in `requests.get(...)`. `httpx.Client().get(...)` is a `client.get` call and is **not** detected. Other languages are read for dependencies and configuration but not analysed as code.
+- **Configuration is classified by pattern, not by resolution.** A name is `(environment)` when it is read through `os.getenv`, `os.environ`, or `process.env`; a bare module-level constant such as `MAX_ATTEMPTS = 3` is reported separately as `(constant)`. A literal such as `INVENTORY_URL = "https://…"` is therefore a constant even when the same name is also read from the environment elsewhere in the file, and both readings appear.
+- **Dependency manifests are cited by searching the raw text.** `pyproject.toml` and `package.json` carry no line numbers, so the analyzer locates the line the literal appears on. A dependency written in a form that cannot be located in the file — an escaped string, for example — is omitted rather than cited approximately, so a dependency list can be incomplete.
+- **A malformed manifest is skipped, not repaired.** A `package.json` whose `dependencies` is an array or a string rather than an object yields no dependencies. This is deliberate: analysis continues and the runbook is narrower, rather than the job failing or inventing structure.
+- **Multi-stage containers are read literally.** A `FROM <stage>` instruction that copies an earlier build stage is not reported as a dependency, because it is not a registry image.
+- **Redaction is pattern-based.** It covers private keys, `key = value` secrets, bearer tokens, common vendor token formats, AWS access key ids, JSON Web Tokens, credential-bearing URLs, and email addresses. A secret in a form none of those patterns match will not be redacted, so treat the manifest as sensitive and do not point this at a repository whose confidentiality matters to you.
+- **Runbooks are not partitioned per user.** Every authenticated user can read any runbook by identifier. That is consistent with a single shared demo instance holding no real data; it would be an authorization defect in any multi-tenant deployment.
+
 ## Known deviations from `AGENTS.md`
 
-[`AGENTS.md`](./AGENTS.md) is this project's source of truth. Two of its requirements are knowingly not met by this deployment, and are recorded here rather than left implicit:
+[`AGENTS.md`](./AGENTS.md) is this project's source of truth. Four of its requirements are knowingly not met by this deployment, and are recorded here rather than left implicit:
 
 - **Ephemeral storage.** `AGENTS.md` requires SQLite on a persistent disk, and states that an ephemeral serverless filesystem must not be used for the MVP. This instance uses ephemeral SQLite on a free-tier host, because the demonstration stores no durable data and free hosting has no disk. Attaching a disk, as `docs/DEPLOYMENT.md` describes, or migrating to PostgreSQL, would satisfy the requirement.
 - **Two seeded demo accounts rather than one.** `AGENTS.md` describes a single seeded demo user. This MVP seeds an `editor` and an `approver`, because the approval boundary `AGENTS.md` requires is only demonstrable when the session that generates a runbook cannot approve it. Both accounts are seeded from environment variables at build time and are not used anywhere else.
+- **The model gateway is not on the live analysis path.** `AGENTS.md` requires every provider request to be routed through the model gateway, and describes that gateway as the place where token limits, timeouts, and output validation are enforced. The gateway exists, is provider-neutral, and is unit tested, but the deployed worker calls the static analyzers directly. Nothing is lost today, because there is no external model and therefore no token budget or network timeout to enforce; the gateway's `MAX_OUTPUT_TOKENS` and `MAX_TIMEOUT_SECONDS` guards apply to gateway callers, not to the live path. Wiring the worker through the gateway is the change required before any external provider is added.
+- **The four analyzers run sequentially, not concurrently.** `AGENTS.md` says to run them concurrently where practical. They are AST and regex passes over an already bounded manifest, so the wall-clock saving is negligible next to the clone, and sequential execution is simpler to reason about and to bound.
 
-Neither deviation weakens a security property. Authorization is still enforced in the backend, not in the interface, and ephemeral storage means a redeploy discards all data rather than preserving it.
+The first two weaken no security property: authorization is enforced in the backend rather than the interface, and ephemeral storage means a redeploy discards all data rather than preserving it. The third and fourth are recorded because they are contract deviations, not because they are currently exploitable.
 
 ## Privacy
 
@@ -236,7 +253,7 @@ Neither deviation weakens a security property. Authorization is still enforced i
 
 ## Optional model providers
 
-The runtime today is deliberately local and deterministic, which is why no analyzed source code is transmitted and the deployment needs no external model credentials. Analysis already passes through a single provider-neutral gateway, so adding a hosted or commercial model later would be a provider registration rather than a rewrite, and output would continue to be labelled with the provider that produced it.
+The runtime today is deliberately local and deterministic, which is why no analyzed source code is transmitted and the deployment needs no external model credentials. A provider-neutral gateway already exists, so adding a hosted or commercial model later would be a provider registration rather than a rewrite, and output would continue to be labelled with the provider that produced it. Be aware that the deployed worker does not currently call through that gateway; see the deviations section above for what that means and what has to change first.
 
 This is a trade-off rather than a strict upgrade: broader language coverage and richer reasoning, in exchange for sending repository content to an external provider. It should be an explicit decision by whoever deploys the system, made only after that provider's data handling, security, and enterprise suitability are understood.
 

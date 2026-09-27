@@ -63,42 +63,79 @@ def _requirements(item: ManifestFile) -> list[Dependency]:
     return dependencies
 
 
+def _locate_line(item: ManifestFile, needle: str) -> int | None:
+    """Return the 1-based line that really contains ``needle``.
+
+    JSON and TOML carry no line numbers, so the only honest citation is the
+    line the literal actually appears on. When it cannot be found (escaped
+    characters, multi-line strings) the caller omits the dependency rather
+    than inventing a citation.
+    """
+    if not needle:
+        return None
+    for line_number, line in enumerate(item.sanitized_content.splitlines(), start=1):
+        if needle in line:
+            return line_number
+    return None
+
+
+def _dependency_from_requirement(
+    item: ManifestFile,
+    requirement: str,
+    category: str,
+) -> Dependency | None:
+    """Build a properly cited dependency, or None when it cannot be cited."""
+    match = _REQUIREMENT_PATTERN.match(requirement.strip())
+    if not match:
+        return None
+    name, version = match.groups()
+    line = _locate_line(item, requirement.strip()) or _locate_line(item, name)
+    if line is None:
+        return None
+    return Dependency(
+        name=name,
+        version=version or None,
+        category=category,
+        evidence=evidence_for(item, line),
+    )
+
+
 def _pyproject(item: ManifestFile) -> list[Dependency]:
     try:
         data = tomllib.loads(item.sanitized_content)
     except (tomllib.TOMLDecodeError, ValueError):
         return []
+    if not isinstance(data, dict):
+        return []
 
     dependencies: list[Dependency] = []
-    project = data.get("project", {})
-    for line_number, requirement in enumerate(project.get("dependencies", []), start=1):
-        if isinstance(requirement, str):
-            match = _REQUIREMENT_PATTERN.match(requirement)
-            if match:
-                name, version = match.groups()
-                dependencies.append(
-                    Dependency(
-                        name=name,
-                        version=version or None,
-                        category="runtime",
-                        evidence=evidence_for(item, line_number),
-                    )
-                )
-    for group, requirements in data.get("project", {}).get("optional-dependencies", {}).items():
-        category = "development" if group in {"dev", "test", "lint"} else "unknown"
-        for line_number, requirement in enumerate(requirements, start=1):
-            if isinstance(requirement, str):
-                match = _REQUIREMENT_PATTERN.match(requirement)
-                if match:
-                    name, version = match.groups()
-                    dependencies.append(
-                        Dependency(
-                            name=name,
-                            version=version or None,
-                            category=category,
-                            evidence=evidence_for(item, line_number),
-                        )
-                    )
+    project = data.get("project")
+    if not isinstance(project, dict):
+        return dependencies
+
+    declared = project.get("dependencies")
+    if isinstance(declared, list):
+        for requirement in declared:
+            if not isinstance(requirement, str):
+                continue
+            dependency = _dependency_from_requirement(item, requirement, "runtime")
+            if dependency is not None:
+                dependencies.append(dependency)
+
+    optional = project.get("optional-dependencies")
+    if isinstance(optional, dict):
+        for group, requirements in optional.items():
+            # A malformed manifest (a string where a list belongs) must not
+            # crash analysis; skip it instead of guessing at its shape.
+            if not isinstance(requirements, list):
+                continue
+            category = "development" if group in {"dev", "test", "lint"} else "unknown"
+            for requirement in requirements:
+                if not isinstance(requirement, str):
+                    continue
+                dependency = _dependency_from_requirement(item, requirement, category)
+                if dependency is not None:
+                    dependencies.append(dependency)
     return dependencies
 
 
@@ -107,29 +144,61 @@ def _package_json(item: ManifestFile) -> list[Dependency]:
         data = json.loads(item.sanitized_content)
     except (json.JSONDecodeError, TypeError):
         return []
+    if not isinstance(data, dict):
+        return []
 
     dependencies: list[Dependency] = []
     for section, category in (("dependencies", "runtime"), ("devDependencies", "development")):
-        for line_number, (name, version) in enumerate(data.get(section, {}).items(), start=1):
-            if isinstance(version, str):
-                dependencies.append(
-                    Dependency(
-                        name=name,
-                        version=version,
-                        category=category,
-                        evidence=evidence_for(item, line_number),
-                    )
+        entries = data.get(section)
+        # "dependencies": [] and "dependencies": "react" are both valid JSON
+        # and both must be ignored rather than crashing the analysis.
+        if not isinstance(entries, dict):
+            continue
+        for name, version in entries.items():
+            if not isinstance(name, str) or not isinstance(version, str):
+                continue
+            line = _locate_line(item, f'"{name}"')
+            if line is None:
+                continue
+            dependencies.append(
+                Dependency(
+                    name=name,
+                    version=version,
+                    category=category,
+                    evidence=evidence_for(item, line),
                 )
+            )
     return dependencies
+
+
+def _stage_alias(arguments: str) -> str | None:
+    """Return the build-stage name in a ``FROM ... AS name`` instruction."""
+    parts = arguments.split()
+    for index, part in enumerate(parts):
+        if part.upper() == "AS" and index + 1 < len(parts):
+            return parts[index + 1].lower()
+    return None
 
 
 def _dockerfile(item: ManifestFile) -> list[Dependency]:
     dependencies: list[Dependency] = []
+    stages: set[str] = set()
     for line_number, line in enumerate(item.sanitized_content.splitlines(), start=1):
         stripped = line.strip()
         if not stripped.upper().startswith("FROM "):
             continue
-        image = stripped.split(None, 1)[1].split()[0]
+        parts = stripped.split()
+        # Skip build flags such as --platform=... to reach the image reference.
+        tokens = [part for part in parts[1:] if not part.startswith("--")]
+        if not tokens:
+            continue
+        image = tokens[0]
+        alias = _stage_alias(" ".join(parts[1:]))
+        if alias is not None:
+            stages.add(alias)
+        # A later stage copies from an earlier stage, not from a registry image.
+        if image.lower() in stages or "$" in image:
+            continue
         dependencies.append(
             Dependency(
                 name=image,

@@ -13,6 +13,7 @@ from app.models.runbook import RunbookDraft
 from app.models.user import UserRecord
 from app.services.runbook_store import (
     RunbookApprovalError,
+    RunbookIntegrityError,
     RunbookNotFoundError,
     SQLiteRunbookStore,
 )
@@ -53,6 +54,11 @@ def get_runbook_versions(
         return list(_store(request).list_versions(runbook_id))
     except RunbookNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except RunbookIntegrityError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Stored runbook content failed its integrity check.",
+        ) from exc
 
 
 @router.post("/{runbook_id}/approve", response_model=RunbookDraft)
@@ -80,6 +86,11 @@ def approve_runbook(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except RunbookApprovalError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except RunbookIntegrityError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Stored runbook content failed its integrity check.",
+        ) from exc
 
 
 @router.post("/{runbook_id}/publish", response_model=RunbookDraft)
@@ -103,6 +114,11 @@ def publish_runbook(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except RunbookApprovalError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except RunbookIntegrityError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Stored runbook content failed its integrity check.",
+        ) from exc
 
 
 @router.post("/{runbook_id}/ask", response_model=AnswerResponse)
@@ -367,3 +383,8 @@ def _get_runbook(request: Request, runbook_id: str):
         return _store(request).get(runbook_id)
     except RunbookNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except RunbookIntegrityError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Stored runbook content failed its integrity check.",
+        ) from exc

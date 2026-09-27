@@ -66,7 +66,7 @@ class ConfigurationFinding(BaseModel):
 
     name: str = Field(min_length=1, max_length=200)
     value_summary: str | None = None
-    kind: Literal["environment", "timeout", "database", "logging", "flag", "other"]
+    kind: Literal["environment", "constant", "timeout", "database", "logging", "flag", "other"]
     evidence: Evidence
 
 

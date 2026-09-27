@@ -22,6 +22,15 @@ class RunbookApprovalError(PermissionError):
     """Raised when an approval or publication rule is not satisfied."""
 
 
+class RunbookIntegrityError(RuntimeError):
+    """Raised when stored content fails its integrity check.
+
+    Deliberately distinct from RunbookApprovalError: a hash mismatch is a
+    storage-integrity failure, not an authorization decision, and must never
+    be reported to a caller as a permission problem.
+    """
+
+
 @dataclass(frozen=True, slots=True)
 class StoredRunbook:
     """A runbook identifier with its current draft."""
@@ -39,20 +48,25 @@ class SQLiteRunbookStore:
         self._connection: sqlite3.Connection | None = None
 
     def _connect(self) -> sqlite3.Connection:
-        if self._connection is None:
-            if self._database_path != ":memory:":
-                Path(self._database_path).parent.mkdir(parents=True, exist_ok=True)
-            self._connection = sqlite3.connect(
-                self._database_path,
-                check_same_thread=False,
-            )
-            self._connection.row_factory = sqlite3.Row
-        return self._connection
+        # Guarded as well as the callers, so no future caller can race the
+        # lazy initialization. RLock is reentrant, so nesting is safe.
+        with self._lock:
+            if self._connection is None:
+                if self._database_path != ":memory:":
+                    Path(self._database_path).parent.mkdir(parents=True, exist_ok=True)
+                self._connection = sqlite3.connect(
+                    self._database_path,
+                    check_same_thread=False,
+                )
+                self._connection.row_factory = sqlite3.Row
+            return self._connection
 
     def initialize(self) -> None:
         """Create runbook tables if they do not exist."""
         with self._lock:
             connection = self._connect()
+            # The foreign key below is inert unless this pragma is enabled.
+            connection.execute("PRAGMA foreign_keys = ON")
             connection.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS runbooks (
@@ -229,7 +243,7 @@ class SQLiteRunbookStore:
         content = row["content"]
         actual_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         if actual_hash != row["content_hash"]:
-            raise RunbookApprovalError("Stored runbook content failed its hash check.")
+            raise RunbookIntegrityError("Stored runbook content failed its hash check.")
         return RunbookDraft(
             content=content,
             metadata=RunbookMetadata(

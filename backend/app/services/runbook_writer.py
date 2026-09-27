@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 from datetime import UTC, datetime
 
-from app.models.analysis import AnalysisResult, Finding
+from app.models.analysis import AnalysisResult, Evidence, Finding
 from app.models.runbook import RunbookDraft, RunbookMetadata
 from app.security.runbook_scan import require_safe_runbook
 
@@ -121,17 +121,25 @@ class RunbookWriter:
             ]
         )
         seen_evidence: set[tuple[str, int, str]] = set()
-        for finding in _all_findings(analysis):
-            for evidence in finding.evidence:
-                excerpt = evidence.excerpt or "source excerpt unavailable"
-                # One source line can back several findings (two configuration
-                # names on one line, for example). Cite it once.
-                key = (evidence.file, evidence.line, excerpt)
-                if key in seen_evidence:
-                    continue
-                seen_evidence.add(key)
-                lines.append(f"- `{evidence.file}:{evidence.line}` — {excerpt}")
-        if not _all_findings(analysis):
+        # Every citation the runbook makes, not only those carried by a Finding.
+        # Dependency and configuration evidence is cited inline in its own
+        # section, so it belongs in the index too.
+        cited: list[Evidence] = []
+        for analysis_finding in _all_findings(analysis):
+            cited.extend(analysis_finding.evidence)
+        cited.extend(dependency.evidence for dependency in analysis.dependencies.dependencies)
+        cited.extend(setting.evidence for setting in analysis.configuration.settings)
+
+        for evidence in cited:
+            excerpt = evidence.excerpt or "source excerpt unavailable"
+            # One source line can back several findings (two configuration
+            # names on one line, for example). Cite it once.
+            key = (evidence.file, evidence.line, excerpt)
+            if key in seen_evidence:
+                continue
+            seen_evidence.add(key)
+            lines.append(f"- `{evidence.file}:{evidence.line}` — {excerpt}")
+        if not cited:
             lines.append("- No evidence-backed findings were produced.")
 
         lines.extend(

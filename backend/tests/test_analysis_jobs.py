@@ -176,3 +176,50 @@ def test_cleanup_failure_is_audited(tmp_path):
         event["event_type"] == "repository_cleanup_failed"
         for event in manager._audit_store.list_for_resource(job.id)
     )
+
+
+def test_well_formed_manifest_with_unexpected_shape_reaches_a_terminal_status(tmp_path):
+    """A public repository is untrusted input.
+
+    "dependencies": [] in a package.json is valid JSON. Before the analyzer
+    validated shapes, it raised AttributeError, which was absent from the
+    worker's except tuple: the thread died, the job stayed "running" forever,
+    and the browser polled indefinitely. Any exception type missing from that
+    tuple produces the same failure, so the test asserts the terminal status
+    rather than the absence of a crash.
+    """
+    (tmp_path / "package.json").write_text('{"name": "demo", "dependencies": []}\n', encoding="utf-8")
+    database_path = str(tmp_path / "jobs.db")
+    manager = AnalysisJobManager(
+        job_store=SQLiteJobStore(database_path),
+        runbook_store=SQLiteRunbookStore(database_path),
+        audit_store=SQLiteAuditStore(database_path),
+        loader=FakeLoader(tmp_path),
+        executor=InlineExecutor(),
+    )
+
+    job = manager.submit("https://github.com/example/project")
+    manager.wait(job.id)
+
+    finished = manager.get(job.id)
+    assert finished.status in {"completed", "failed"}
+    assert finished.status != "running"
+
+
+def test_completed_futures_are_released(tmp_path):
+    """The job manager keeps futures for wait(); they must not accumulate."""
+    make_fixture(tmp_path)
+    database_path = str(tmp_path / "jobs.db")
+    manager = AnalysisJobManager(
+        job_store=SQLiteJobStore(database_path),
+        runbook_store=SQLiteRunbookStore(database_path),
+        audit_store=SQLiteAuditStore(database_path),
+        loader=FakeLoader(tmp_path),
+        executor=InlineExecutor(),
+    )
+
+    for _ in range(3):
+        job = manager.submit("https://github.com/example/project")
+        manager.wait(job.id)
+
+    assert manager._futures == {}

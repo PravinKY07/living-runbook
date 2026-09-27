@@ -39,6 +39,12 @@ _PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
         REDACTED_TOKEN,
     ),
     (
+        # A JSON Web Token is a bearer credential. Without this, a token stored
+        # under a variable name outside the keyword list survived redaction.
+        re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}"),
+        REDACTED_TOKEN,
+    ),
+    (
         re.compile(r"\b[a-z][a-z0-9+.-]*://[^/\s:@]+:[^@\s/]+@", re.IGNORECASE),
         rf"{REDACTED_CREDENTIALS}@",
     ),
