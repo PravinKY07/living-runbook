@@ -194,6 +194,15 @@ This demo runs on free-tier hosting, so:
 - **Storage is ephemeral.** No persistent disk is attached to this host, so a redeploy erases all runbooks, versions, approvals, and audit events. The demo accounts are recreated automatically; analyzed runbooks are not. Attaching a disk, as `docs/DEPLOYMENT.md` describes, would change this.
 - There is no uptime guarantee, no backup, and no support commitment.
 
+## Known deviations from `AGENTS.md`
+
+[`AGENTS.md`](./AGENTS.md) is this project's source of truth. Two of its requirements are knowingly not met by this deployment, and are recorded here rather than left implicit:
+
+- **Ephemeral storage.** `AGENTS.md` requires SQLite on a persistent disk, and states that an ephemeral serverless filesystem must not be used for the MVP. This instance uses ephemeral SQLite on a free-tier host, because the demonstration stores no durable data and free hosting has no disk. Attaching a disk, as `docs/DEPLOYMENT.md` describes, or migrating to PostgreSQL, would satisfy the requirement.
+- **Two seeded demo accounts rather than one.** `AGENTS.md` describes a single seeded demo user. This MVP seeds an `editor` and an `approver`, because the approval boundary `AGENTS.md` requires is only demonstrable when the session that generates a runbook cannot approve it. Both accounts are seeded from environment variables at build time and are not used anywhere else.
+
+Neither deviation weakens a security property. Authorization is still enforced in the backend, not in the interface, and ephemeral storage means a redeploy discards all data rather than preserving it.
+
 ## Privacy
 
 - Only public repositories are analyzed.

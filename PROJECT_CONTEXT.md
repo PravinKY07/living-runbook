@@ -110,7 +110,7 @@ The action begins with `workflow_dispatch`. It analyzes changes through the host
 
 ## Current implementation status
 
-The MVP backend and frontend are implemented locally. The current checkout includes the FastAPI backend, static analyzers, runbook generation and approval services, audit endpoint, React/Vite frontend, deployment documentation, and a manually triggered GitHub Action. See the README and deployment guide for current runnable commands and verification steps.
+The MVP backend and frontend are implemented and deployed to the public evaluation instance described in [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md). The current checkout includes the FastAPI backend, static analyzers, runbook generation and approval services, audit endpoint, React/Vite frontend, deployment documentation, and a manually triggered GitHub Action. See the README and deployment guide for current runnable commands and verification steps. The README section "Known deviations from `AGENTS.md`" records the two requirements this deployment knowingly does not meet: ephemeral storage, and two seeded demo accounts rather than one.
 
 No credentials, API keys, passwords, private repository data, or `.env` values belong in this document or the public repository.
 
