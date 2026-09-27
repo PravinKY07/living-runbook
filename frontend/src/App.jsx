@@ -242,6 +242,15 @@ function RepositoryForm({ onJob, onError, busy }) {
   );
 }
 
+// The analysis banner must stop claiming a runbook is a draft once an Approver
+// has acted on it, so the message follows the runbook status shown beside it.
+const RUNBOOK_STATUS_MESSAGES = {
+  completed: "Draft runbook created.",
+  draft: "Draft runbook created.",
+  approved: "Draft approved. Not published yet.",
+  published: "Draft approved and published.",
+};
+
 function JobStatus({ job }) {
   if (!job) {
     return null;
@@ -254,7 +263,11 @@ function JobStatus({ job }) {
         <span className={`status status-${job.status}`}>{job.status}</span>
         <span className="muted">Job {job.id}</span>
       </div>
-      {job.runbook_id && <p className="success">Draft runbook created.</p>}
+      {job.runbook_id && (
+        <p className="success">
+          {RUNBOOK_STATUS_MESSAGES[job.status] || RUNBOOK_STATUS_MESSAGES.completed}
+        </p>
+      )}
       {job.error_message && <p className="error">{job.error_message}</p>}
     </section>
   );
