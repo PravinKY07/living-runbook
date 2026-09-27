@@ -35,15 +35,15 @@
 
 ## Configuration
 
-- `DATABASE_URL` (environment) — evidence: `.env.example:1`; value withheld
 - `database` (database) — evidence: `.env.example:1`; value withheld
-- `REQUEST_TIMEOUT` (environment) — evidence: `.env.example:2`; value withheld
+- `DATABASE_URL` (constant) — evidence: `.env.example:1`; value withheld
 - `timeout` (timeout) — evidence: `.env.example:2`; value withheld
-- `INVENTORY_URL` (environment) — evidence: `.env.example:3`; value withheld
+- `REQUEST_TIMEOUT` (constant) — evidence: `.env.example:2`; value withheld
+- `INVENTORY_URL` (constant) — evidence: `.env.example:3`; value withheld
 - `feature_flag` (flag) — evidence: `README.md:9`; value withheld
 - `timeout` (timeout) — evidence: `README.md:12`; value withheld
 - `INVENTORY_URL` (environment) — evidence: `app.py:17`; value withheld
-- `MAX_ATTEMPTS` (environment) — evidence: `app.py:18`; value withheld
+- `MAX_ATTEMPTS` (constant) — evidence: `app.py:18`; value withheld
 - `timeout` (timeout) — evidence: `app.py:26`; value withheld
 - `timeout` (timeout) — evidence: `app.py:31`; value withheld
 - `database` (database) — evidence: `app.py:43`; value withheld
@@ -98,6 +98,10 @@
 - `config.py:7` — self.request_timeout = int(os.getenv("REQUEST_TIMEOUT", "5"))
 - `database.py:5` — def get_connection(database_url: str):
 - `database.py:6` — if not database_url:
+- `Dockerfile:1` — FROM python:3.12-slim
+- `requirements.txt:1` — fastapi>=0.100.0
+- `requirements.txt:2` — uvicorn>=0.20.0
+- `requirements.txt:3` — requests>=2.31.0
 
 ## Limitations
 
